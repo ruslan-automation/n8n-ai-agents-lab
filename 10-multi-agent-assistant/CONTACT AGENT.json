@@ -1,0 +1,417 @@
+{
+  "name": "CONTACT AGENT",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "340e4acb-2624-40a2-8835-077cf30c418d",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.item.json;\nconst command = input.command || '';\n\n// Нормализация телефона\nconst normalizePhone = (phone) => {\n  if (!phone) return null;\n  let digits = phone.replace(/\\D/g, '');\n  if (digits.startsWith('8') && digits.length === 11) {\n    digits = '7' + digits.slice(1);\n  }\n  if (!digits.startsWith('7') && digits.length === 10) {\n    digits = '7' + digits;\n  }\n  return digits.length >= 10 ? '+' + digits : null;\n};\n\n// Извлечение телефона из команды\nconst phoneMatch = command.match(/(?:\\+7|8|7)?[\\s-]?\\(?\\d{3}\\)?[\\s-]?\\d{3}[\\s-]?\\d{2}[\\s-]?\\d{2}/);\nconst extractedPhone = phoneMatch ? normalizePhone(phoneMatch[0]) : null;\n\n// Извлечение email\nconst emailMatch = command.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);\nconst extractedEmail = emailMatch ? emailMatch[0].toLowerCase() : null;\n\n// Извлечение имени (после слов: контакт, добавь, найди, позвони)\nconst namePatterns = [\n  /(?:контакт|добавь|найди|позвони|напиши)\\s+([А-Яа-яA-Za-z]+(?:\\s+[А-Яа-яA-Za-z]+)?)/i,\n  /([А-Яа-яA-Za-z]+(?:\\s+[А-Яа-яA-Za-z]+)?)\\s+(?:телефон|номер|email)/i\n];\n\nlet extractedName = null;\nfor (const pattern of namePatterns) {\n  const match = command.match(pattern);\n  if (match) {\n    extractedName = match[1].trim();\n    break;\n  }\n}\n\nreturn {\n  json: {\n    command: command,\n    source: input.source,\n    chatId: input.chatId,\n    extracted: {\n      phone: extractedPhone,\n      email: extractedEmail,\n      name: extractedName\n    },\n    context: {\n      timestamp: new Date().toISOString(),\n      hasPhone: !!extractedPhone,\n      hasEmail: !!extractedEmail,\n      hasName: !!extractedName\n    }\n  }\n};"
+      },
+      "id": "3d79f85a-d0b6-49e8-a065-4bea7407d40b",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        208,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.command }}\n\n---\n📋 ИЗВЛЕЧЁННЫЕ ДАННЫЕ:\n- Телефон: {{ $json.extracted.phone || 'не найден' }}\n- Email: {{ $json.extracted.email || 'не найден' }}\n- Имя: {{ $json.extracted.name || 'не найдено' }}",
+        "options": {
+          "systemMessage": "Ты — AI-ассистент для управления контактами в Google Sheets.\n\n## ⚠️ КРИТИЧЕСКИ ВАЖНО\nТы ОБЯЗАН использовать инструменты для КАЖДОГО запроса. НИКОГДА не отвечай текстом без вызова инструмента!\n\n## АЛГОРИТМ РАБОТЫ\n\n### При добавлении контакта:\n1. ВЫЗОВИ инструмент 'Add Contact' с параметрами:\n   - Name: имя контакта (обязательно)\n   - Phone: телефон (НЕ ОБЯЗАТЕЛЬНО. Если есть — формат +7XXXXXXXXXX. Если нет — оставь пустым)\n   - Email: email (НЕ ОБЯЗАТЕЛЬНО. Если нет — оставь пустым)\n   - Notes: заметки если есть\n2. ВАЖНО: Если у пользователя есть ТОЛЬКО Email (без телефона) — СОЗДАВАЙ контакт смело. Не проси номер телефона.\n3. После успешного добавления сообщи: '✅ Контакт [Name] добавлен'.\n\n### При поиске контакта:\n1. ВЫЗОВИ 'Search Contacts'\n2. Покажи информацию пользователю\n\n## СТРУКТУРА ТАБЛИЦЫ\nКолонки: Name | Phone | Email | Notes\n\n## ФОРМАТ ТЕЛЕФОНА (Только если он указан)\n- Вход: 89001234567, 8-900-123-45-67, +7(900)123-45-67\n- Выход: +79001234567\n\n## ЗАПРЕЩЕНО\n- Требовать номер телефона, если предоставлен Email\n- Отвечать без вызова инструмента\n- Говорить 'я не могу' или 'у меня нет доступа'",
+          "maxIterations": 15
+        }
+      },
+      "id": "3077b2cb-7710-4f1c-9ccb-7c10ec6e6bd2",
+      "name": "Contact Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        432,
+        0
+      ],
+      "typeVersion": 1.7,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Parse Input').item.json.chatId }}",
+        "contextWindowLength": 10
+      },
+      "id": "17fc9716-0bfe-422c-bc4a-62601a9b810d",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        432,
+        224
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0",
+          "mode": "list",
+          "cachedResultName": "Контакты",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "41b3a517-fcc1-4da8-a071-aadf74dba037",
+      "name": "Search Contacts",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "position": [
+        576,
+        400
+      ],
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0",
+          "mode": "list",
+          "cachedResultName": "Контакты",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
+            "Email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Email', ``, 'string') }}",
+            "Phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Phone', ``, 'string') }}",
+            "Notes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Notes', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "06f41a32-7b94-49cb-bcdd-1843f98554c3",
+      "name": "Add Contact",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "position": [
+        720,
+        400
+      ],
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0",
+          "mode": "list",
+          "cachedResultName": "Контакты",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12Vhw8KGK8sXNCKMXIL76ZaGBKV97H66Z-3sePK6FPA0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
+            "Email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Email', ``, 'string') }}",
+            "Phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Phone', ``, 'string') }}",
+            "Notes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Notes', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "Phone"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "76b78fbb-653f-4624-a8dc-70a76816d2d0",
+      "name": "Update Contact",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "position": [
+        864,
+        400
+      ],
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simply pass through the agent output\nconst agentOutput = $input.first().json;\n\nreturn {\n  json: {\n    success: true,\n    message: agentOutput.output || agentOutput.text || 'Done'\n  }\n};"
+      },
+      "id": "ab49adc6-43c2-4ed5-a8f5-ac3d0e3665e9",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        784,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        256,
+        224
+      ],
+      "id": "70d934fd-42d7-4869-9dd0-820f8427c471",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Contact Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Contact Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Contacts": {
+      "ai_tool": [
+        [
+          {
+            "node": "Contact Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Contact": {
+      "ai_tool": [
+        [
+          {
+            "node": "Contact Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact": {
+      "ai_tool": [
+        [
+          {
+            "node": "Contact Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Agent": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Contact Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "d70a96d1-44db-4909-a792-7ecf4d2670c8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "k4ShpYIXSRlsla4cPWNMi",
+  "tags": []
+}

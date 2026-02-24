@@ -1,0 +1,316 @@
+{
+  "name": "Calendar Agent v2",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-msg",
+              "name": "response",
+              "value": "Не удалось выполнить. Попробуй ещё раз.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "147cba98-c8d7-4f60-a55d-549250711571",
+      "name": "Try Again",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "success-msg",
+              "name": "=response",
+              "value": "={{$json.output}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c26760b7-90c7-41c6-8840-c85e37f944cc",
+      "name": "Success",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "minimaxcreator108@gmail.com",
+          "mode": "list",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "start": "={{ $fromAI(\"eventStart\") }}",
+        "end": "={{ $fromAI(\"eventEnd\") }}",
+        "additionalFields": {
+          "attendees": [],
+          "summary": "={{ $fromAI(\"eventTitle\") }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        528
+      ],
+      "id": "9543360b-4eb2-4b6c-9137-e4edf5796f20",
+      "name": "Create Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "minimaxcreator108@gmail.com",
+          "mode": "list",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "timeMin": "={{ $fromAI(\"dayBefore\",\"the day before the date the user requested\") }}",
+        "timeMax": "={{ $fromAI(\"dayAfter\",\"the day after the date the user requested\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -432,
+        528
+      ],
+      "id": "1b3e48bc-3d73-4a50-bd87-635d68a1d524",
+      "name": "Get Events",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "minimaxcreator108@gmail.com",
+          "mode": "list",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "eventId": "={{ $fromAI(\"eventID\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -80,
+        528
+      ],
+      "id": "ed3f5bf8-de6d-4dd1-baa5-efaddfba7380",
+      "name": "Delete Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "value": "minimaxcreator108@gmail.com",
+          "mode": "list",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "eventId": "={{ $fromAI(\"eventID\") }}",
+        "updateFields": {
+          "end": "={{ $fromAI(\"endTime\") }}",
+          "start": "={{ $fromAI(\"startTime\") }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -192,
+        528
+      ],
+      "id": "fca679a7-b87f-43eb-86e6-5b66709b542c",
+      "name": "Update Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -672,
+        128
+      ],
+      "id": "31bd9dba-6b56-47da-8166-7b9aa4f51d1d",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query }}",
+        "options": {
+          "systemMessage": "=Current Date and Time: {{ $now.toISO() }}\n# Overview\nТы - ассистент календаря. Твои обязанности: создание, просмотр, обновление и удаление событий.\n\n## Инструменты\n- \"Create Event\" - создание события\n- \"Get Events\" - получение событий за период. Возвращает список событий с их ID.\n- \"Delete Event\" - удаление события по ID.\n- \"Update Event\" - обновление события по ID.\n\n## ВАЖНО: УДАЛЕНИЕ СОБЫТИЙ\nЕсли пользователь просит удалить \"все встречи\" или \"встречи на завтра\":\n1. СНАЧАЛА вызови \"Get Events\", чтобы найти эти встречи и получить их ID.\n2. ПОСЛЕ получения списка, вызови \"Delete Event\" ДЛЯ КАЖДОГО найденного события ОТДЕЛЬНО, используя его ID.\n3. Если событий несколько, вызови \"Delete Event\" несколько раз подряд.\n\nПример:\nUser: \"Удали всё на завтра\"\nAgent: \n1. Call \"Get Events\" (timeMin=tomorrow start, timeMax=tomorrow end)\n2. (Found 3 events: ID_A, ID_B, ID_C)\n3. Call \"Delete Event\" (eventId=ID_A)\n4. Call \"Delete Event\" (eventId=ID_B)\n5. Call \"Delete Event\" (eventId=ID_C)\n6. Reply \"Удалил 3 события\".\n\nОтвечай на русском."
+        }
+      },
+      "id": "327b035b-31f6-4f4d-ac69-99662d773637",
+      "name": "Calendar agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        -448,
+        128
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        384
+      ],
+      "id": "5ebe44cf-f2b7-46bf-86e2-f8d2c023f964",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Create Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Events": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Calendar agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar agent": {
+      "main": [
+        [
+          {
+            "node": "Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Try Again",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Calendar agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "a0a72a95-0b63-4a54-8ca3-e499d37fae9f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "5itDosFysy3RAkG7fAZIw",
+  "tags": []
+}

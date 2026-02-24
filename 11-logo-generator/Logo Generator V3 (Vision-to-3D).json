@@ -1,0 +1,1044 @@
+{
+  "name": "Logo Generator V3 (Vision-to-3D)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "v3-trigger",
+      "name": "Telegram Trigger",
+      "position": [
+        400,
+        512
+      ],
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "webhookId": "c6150323-243b-4512-b868-89a663e08edb",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Logo Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.message.text }}",
+              "operator": {
+                "operation": "exists",
+                "type": "string"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.message.text }}",
+              "operator": {
+                "operation": "notStartsWith",
+                "type": "string"
+              },
+              "rightValue": "/"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          }
+        },
+        "options": {}
+      },
+      "id": "v3-hastext",
+      "name": "Has Text?",
+      "position": [
+        640,
+        512
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ '🎨 *Logo Generator V3*\\n\\nПривет, ' + ($json.message.from.first_name || '') + '! Я создаю логотипы с точным 3D-клоном.\\n\\n📝 *Как пользоваться:*\\nОпишите бренд:\\n• Бургерная, огонь, оранжевый\\n• Кофейня, минимализм, зеленый\\n\\n🎯 *Результат:*\\n1️⃣ Vector — для печати\\n2️⃣ 3D Neon — точная 3D-копия для соцсетей' }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "v3-help",
+      "name": "Send Help",
+      "position": [
+        880,
+        704
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "ec035e20-f4c1-41ab-a838-e39c0ba6e382",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Logo Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ '⏳ Генерирую Brand Pack для: \"' + $json.message.text + '\"\\n\\n🔄 Создаю логотип + точную 3D-копию...\\nЭто займет ~90 сек.' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "v3-working",
+      "name": "Send Working",
+      "position": [
+        880,
+        512
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "3b82a364-dc62-4d38-afbf-038218561755",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Logo Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $('Telegram Trigger').item.json.message;\nconst userInput = msg.text.trim();\nconst chat_id = msg.chat.id;\n\nconst systemPrompt = `You are a world-class Brand Identity Designer. The user describes a brand. Create ONE vector logo prompt.\n\nOutput ONLY valid JSON:\n{\"brand_name\":\"...\",\"brand_colors\":\"...\",\"vector_prompt\":\"...\"}\n\nRULES:\n- Style: Paul Rand or Saul Bass minimalism\n- Describe the icon SEMANTICALLY (what it represents), NOT geometrically\n- GOOD: \"a single, iconic symbol representing flames or a stylized burger\"\n- BAD: \"two upward pointing triangles, one slightly offset\"\n- The icon must be recognizable and relevant to the business\n- Clean geometric lines, max 2 colors + white background, centered\n- NO text, NO typography, NO letters\n- Keep prompt SHORT (1-2 sentences)`;\n\nconst requestBody = { model: 'google/gemini-2.0-flash-001', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userInput }] };\n\nreturn { json: { requestBody: JSON.stringify(requestBody), chat_id, user_input: userInput, first_name: msg.from?.first_name || '' } };"
+      },
+      "id": "v3-brain-prep",
+      "name": "Prepare Brain Input",
+      "position": [
+        1120,
+        512
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "v3-brain",
+      "name": "AI Brain",
+      "position": [
+        1360,
+        512
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "RAG юрист  (OpenRouter)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json;\nconst content = response.choices[0].message.content;\nconst brainData = $('Prepare Brain Input').item.json;\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (e) {\n  const match = content.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (match) parsed = JSON.parse(match[1].trim());\n  else throw new Error('AI did not return valid JSON');\n}\n\nif (!parsed.vector_prompt) throw new Error('Missing vector_prompt in AI response');\n\nreturn { json: { current_prompt: parsed.vector_prompt, vector_prompt: parsed.vector_prompt, brand_name: parsed.brand_name || brainData.user_input, brand_colors: parsed.brand_colors || '', chat_id: brainData.chat_id, user_input: brainData.user_input, first_name: brainData.first_name, vector_url: null, neon_url: null } };"
+      },
+      "id": "v3-parse",
+      "name": "Parse Prompts",
+      "position": [
+        1600,
+        512
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"model\": \"nano-banana-pro\", \"input\": { \"prompt\": $json.current_prompt, \"aspect_ratio\": \"1:1\", \"resolution\": \"2K\", \"output_format\": \"png\" } }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "v3-kie-vector",
+      "name": "KIE Vector Gen",
+      "position": [
+        1840,
+        512
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json.data || $input.item.json;\nconst taskId = resp.taskId || resp.task_id;\nif (!taskId) throw new Error('No taskId from KIE');\nconst s = $('Parse Prompts').item.json;\nreturn { json: { ...s, task_id: taskId, attempts: 0 } };"
+      },
+      "id": "v3-save-vector",
+      "name": "Save Vector Task",
+      "position": [
+        2080,
+        512
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {},
+      "id": "v3-wait1",
+      "name": "Wait Vector",
+      "position": [
+        2320,
+        512
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "v3-wait-vector-001"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.task_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v3-check1",
+      "name": "Check Vector Status",
+      "position": [
+        2560,
+        512
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "vf1",
+              "leftValue": "={{ $json.data.state }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "fail"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "v3-vfailed",
+      "name": "Vector Failed?",
+      "position": [
+        2800,
+        512
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "vd1",
+              "leftValue": "={{ $json.data.state }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "success"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "v3-vdone",
+      "name": "Vector Done?",
+      "position": [
+        3040,
+        512
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $('Save Vector Task').item.json;\nconst attempts = (s.attempts || 0) + 1;\nif (attempts >= 24) throw new Error('Vector timeout after ' + (24*5) + 's');\nreturn { json: { ...s, attempts } };"
+      },
+      "id": "v3-vretry",
+      "name": "Vector Retry",
+      "position": [
+        3040,
+        704
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\nconst s = $('Save Vector Task').item.json;\n\nlet imageUrl = null;\ntry {\n  if (result.data && result.data.resultJson) {\n    const parsed = JSON.parse(result.data.resultJson);\n    if (parsed.resultUrls && parsed.resultUrls.length > 0) imageUrl = parsed.resultUrls[0];\n    else if (parsed.resultUrl) imageUrl = parsed.resultUrl;\n  }\n  if (!imageUrl && result.data && result.data.resultUrl) imageUrl = result.data.resultUrl;\n  if (!imageUrl && result.data && result.data.url) imageUrl = result.data.url;\n} catch (e) {\n  throw new Error('Failed to parse KIE result: ' + e.message);\n}\nif (!imageUrl) throw new Error('No vector image URL in KIE response');\n\nreturn { json: { ...s, vector_url: imageUrl } };"
+      },
+      "id": "v3-extract-vector",
+      "name": "Extract Vector URL",
+      "position": [
+        416,
+        1200
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'google/gemini-2.0-flash-001', messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: $('Extract Vector URL').item.json.vector_url } }, { type: 'text', text: 'Describe this logo icon in ONE detailed sentence for a 3D render prompt. Focus on the EXACT shape, form and visual elements. Do NOT mention colors, background or style. Example: \"a stylized flame emerging from a burger bun with curved lines and a rounded base\". Output ONLY the description, nothing else.' }] }] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "v3-vision",
+      "name": "Vision Analyze",
+      "position": [
+        672,
+        1200
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "RAG юрист  (OpenRouter)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const visionResp = $input.item.json;\nconst iconDesc = visionResp.choices[0].message.content.trim();\nconst s = $('Extract Vector URL').item.json;\n\nconst neonColor = s.brand_colors ? s.brand_colors.split(',')[0].trim().toLowerCase() : 'white';\nconst material = 'brushed metal';\n\nconst neonPrompt = `Create a hyperrealistic 3D render in 1:1 aspect ratio featuring ${iconDesc} logo with a sophisticated dual-layer construction: the upper layer crafted from ${material} with realistic reflections and subtle imperfections, while the lower layer glows with intense neon ${neonColor} luminescence creating a striking halo effect, both layers perfectly mirroring the logo's shape and floating weightlessly in mid-air. Frame the composition with a dynamic three-quarter isometric perspective, the logo slightly rotated and tilted at an angle to showcase depth and volume, set against a moody atmospheric background filled with mystical volumetric fog and subtle particle effects. Employ professional color grading with deep contrasts, incorporate elegant lens flares and light rays piercing through the haze, add a sophisticated depth of field with bokeh elements, and finish with a dark gradient backdrop transitioning from deep navy to charcoal black, accented by subtle ambient lighting that highlights the logo's edges and creates an epic movie poster aesthetic with premium commercial quality.`;\n\nreturn { json: { ...s, neon_prompt: neonPrompt, icon_description: iconDesc } };"
+      },
+      "id": "v3-build-3d",
+      "name": "Build 3D Prompt",
+      "position": [
+        912,
+        1200
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"model\": \"nano-banana-pro\", \"input\": { \"prompt\": $json.neon_prompt, \"aspect_ratio\": \"1:1\", \"resolution\": \"2K\", \"output_format\": \"png\" } }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "v3-kie-neon",
+      "name": "KIE Neon Gen",
+      "position": [
+        1152,
+        1200
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json.data || $input.item.json;\nconst taskId = resp.taskId || resp.task_id;\nif (!taskId) throw new Error('No taskId from KIE');\nconst s = $('Build 3D Prompt').item.json;\nreturn { json: { ...s, neon_task_id: taskId, neon_attempts: 0 } };"
+      },
+      "id": "v3-save-neon",
+      "name": "Save Neon Task",
+      "position": [
+        1392,
+        1200
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {},
+      "id": "v3-wait2",
+      "name": "Wait Neon",
+      "position": [
+        1632,
+        1200
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "v3-wait-neon-001"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.neon_task_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v3-check2",
+      "name": "Check Neon Status",
+      "position": [
+        1872,
+        1200
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "nf1",
+              "leftValue": "={{ $json.data.state }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "fail"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "v3-nfailed",
+      "name": "Neon Failed?",
+      "position": [
+        2112,
+        1200
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "nd1",
+              "leftValue": "={{ $json.data.state }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "success"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "v3-ndone",
+      "name": "Neon Done?",
+      "position": [
+        2352,
+        1200
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $('Save Neon Task').item.json;\nconst attempts = (s.neon_attempts || 0) + 1;\nif (attempts >= 24) throw new Error('Neon timeout after ' + (24*5) + 's');\nreturn { json: { ...s, neon_attempts: attempts } };"
+      },
+      "id": "v3-nretry",
+      "name": "Neon Retry",
+      "position": [
+        2352,
+        1392
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\nconst s = $('Save Neon Task').item.json;\n\nlet imageUrl = null;\ntry {\n  if (result.data && result.data.resultJson) {\n    const parsed = JSON.parse(result.data.resultJson);\n    if (parsed.resultUrls && parsed.resultUrls.length > 0) imageUrl = parsed.resultUrls[0];\n    else if (parsed.resultUrl) imageUrl = parsed.resultUrl;\n  }\n  if (!imageUrl && result.data && result.data.resultUrl) imageUrl = result.data.resultUrl;\n  if (!imageUrl && result.data && result.data.url) imageUrl = result.data.url;\n} catch (e) {\n  throw new Error('Failed to parse KIE neon result: ' + e.message);\n}\nif (!imageUrl) throw new Error('No neon image URL');\n\nreturn { json: { ...s, neon_url: imageUrl } };"
+      },
+      "id": "v3-extract-neon",
+      "name": "Extract Neon URL",
+      "position": [
+        2592,
+        1200
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.vector_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "v3-dl-vector",
+      "name": "Download Vector",
+      "position": [
+        2832,
+        1088
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.neon_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "v3-dl-neon",
+      "name": "Download Neon",
+      "position": [
+        2832,
+        1296
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Extract Neon URL').item.json.chat_id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ '🎨 Brand Pack: \"' + $('Extract Neon URL').item.json.brand_name + '\"\\n\\n1️⃣ Vector Print — строгий стиль для печати.' }}"
+        }
+      },
+      "id": "v3-photo1",
+      "name": "Send Vector Photo",
+      "position": [
+        3072,
+        1088
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "93809000-495e-40b2-913e-891273ed3175",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Logo Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Extract Neon URL').item.json.chat_id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "2️⃣ Neon 3D — точная 3D-копия логотипа.\n\n💡 Хотите другой вариант? Отправьте новое описание."
+        }
+      },
+      "id": "v3-photo2",
+      "name": "Send Neon Photo",
+      "position": [
+        3072,
+        1296
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "9c94faee-5234-4ee8-8a2f-af19f631db9c",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Logo Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Prompts').item.json.chat_id }}",
+        "text": "⚠️ Не удалось сгенерировать. Попробуйте другой запрос.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "v3-send-error",
+      "name": "Send Error",
+      "position": [
+        3040,
+        912
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "b7fabd8d-7352-42b7-99d6-10b7ace13e3c",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Logo Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Save Neon Task').item.json.chat_id }}",
+        "text": "⚠️ Не удалось сгенерировать 3D. Попробуйте другой запрос.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "v3-send-error2",
+      "name": "Send Neon Error",
+      "position": [
+        2352,
+        1600
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "9ad2e66c-4ebe-463a-b3e3-6bfe26ad31b6",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Logo Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Brain": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Parse Prompts",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Build 3D Prompt": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "KIE Neon Gen",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Check Neon Status": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Neon Failed?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Check Vector Status": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Vector Failed?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Download Neon": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Neon Photo",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Download Vector": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Vector Photo",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Extract Neon URL": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Download Vector",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Download Neon",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Has Text?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Working",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Send Help",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "KIE Neon Gen": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Save Neon Task",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "KIE Vector Gen": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Save Vector Task",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Neon Done?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Extract Neon URL",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Neon Retry",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Neon Failed?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Neon Error",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Neon Done?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Neon Retry": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait Neon",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Parse Prompts": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "KIE Vector Gen",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Prepare Brain Input": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "AI Brain",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Save Neon Task": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait Neon",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Save Vector Task": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait Vector",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Send Working": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Prepare Brain Input",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Has Text?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Vector Done?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Extract Vector URL",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Vector Retry",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Vector Failed?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Error",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Vector Done?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Vector Retry": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait Vector",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Vision Analyze": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Build 3D Prompt",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait Neon": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Check Neon Status",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait Vector": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Check Vector Status",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Extract Vector URL": {
+      "main": [
+        [
+          {
+            "node": "Vision Analyze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "fc8a4d9c-60f2-4478-89f7-de83b8ce6a8b",
+  "meta": {
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "yVdUJU8DXD5i2QYp",
+  "tags": []
+}

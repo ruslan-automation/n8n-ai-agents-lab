@@ -1,0 +1,105 @@
+{
+  "name": "Dashboard API",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "dashboard-events",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "d52ab38d-9d5f-4cda-b8a0-4a6a4ec8752d",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        752,
+        0
+      ],
+      "webhookId": "dashboard-events"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "minimaxcreator108@gmail.com",
+          "mode": "list",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $today.minus(1, 'days') }}",
+          "timeMax": "={{ $today.plus(7, 'days') }}"
+        }
+      },
+      "id": "0f2280ad-4f2e-4d59-9e98-437b61307836",
+      "name": "Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        976,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем дату из query параметра (если есть)\nconst queryDate = $('Webhook').first().json.query?.date;\n\n// Фильтруем события с временем\nlet events = items.map(item => item.json).filter(e => e.start && e.start.dateTime);\n\n// Если передана дата в query - фильтруем только события этой даты\nif (queryDate) {\n  events = events.filter(e => {\n    const eventDate = new Date(e.start.dateTime);\n    // Форматируем дату события в YYYY-MM-DD (в локальном времени события)\n    const eventDateStr = e.start.dateTime.split('T')[0];\n    return eventDateStr === queryDate;\n  });\n}\n\n// Считаем события на сегодня для статистики\nconst today = new Date();\nconst todayStr = today.toISOString().split('T')[0];\nconst allEvents = items.map(item => item.json).filter(e => e.start && e.start.dateTime);\nconst todayEvents = allEvents.filter(e => e.start.dateTime.split('T')[0] === todayStr);\n\nconst stats = {\n  today: todayEvents.length,\n  conversion: 68,\n  sum: \"2.4M\"\n};\n\nconst meetings = events.map(e => {\n  // Парсим время из ISO строки (учитывая часовой пояс события)\n  const dateTimeStr = e.start.dateTime;\n  const timePart = dateTimeStr.split('T')[1];\n  const hours = timePart.substring(0, 2);\n  const minutes = timePart.substring(3, 5);\n  const time = parseInt(hours) + ':' + minutes;\n  \n  return {\n    time: time,\n    rawTime: e.start.dateTime,\n    date: dateTimeStr.split('T')[0],\n    client: e.summary || 'Без названия',\n    desc: e.description || 'Нет описания',\n    status: 'confirmed'\n  };\n});\n\nreturn [\n  {\n    json: {\n      stats,\n      meetings,\n      requestedDate: queryDate || 'all'\n    }\n  }\n];"
+      },
+      "id": "68a1648f-4158-4d0c-9c83-b7a6e47b2351",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Yekaterinburg",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "26794811-e58e-44d2-bf5d-fa0fbbe44528",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "SaSBvxbO6DPZNgm2E8lru",
+  "tags": []
+}

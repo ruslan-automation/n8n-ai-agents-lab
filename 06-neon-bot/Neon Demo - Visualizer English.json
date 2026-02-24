@@ -1,0 +1,396 @@
+{
+  "name": "Neon Demo - Visualizer English",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "width",
+              "type": "number"
+            },
+            {
+              "name": "color"
+            },
+            {
+              "name": "scene"
+            },
+            {
+              "name": "chat_id"
+            }
+          ]
+        }
+      },
+      "id": "1dd63d18-fa5a-4722-8d9d-cdfd74b3f657",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text || 'NEON';\nconst widthInches = $input.first().json.width || 40;\nconst color = $input.first().json.color || 'pink';\nconst scene = $input.first().json.scene || 'bar';\nconst chat_id = $input.first().json.chat_id;\n\n// Convert inches to cm for prompt (visual reference)\nconst widthCm = Math.round(widthInches * 2.54);\n\nconst sceneMap = {\n  'bar': 'stylish bar interior with dark walls and ambient lighting',\n  'cafe': 'cozy cafe interior with warm atmosphere',\n  'street': 'night city street with brick wall building exterior',\n  'storefront': 'modern storefront window display',\n  'restaurant': 'upscale restaurant interior with elegant decor',\n  'shop': 'retail store interior with product displays',\n  'office': 'modern office reception area',\n  'bedroom': 'stylish bedroom with modern decor',\n  'living room': 'contemporary living room interior',\n  'garage': 'modern garage or man cave with sports memorabilia'\n};\n\nlet sceneDesc = sceneMap['bar'];\nfor (const [key, value] of Object.entries(sceneMap)) {\n  if (scene.toLowerCase().includes(key)) {\n    sceneDesc = value;\n    break;\n  }\n}\n\nconst colorMap = {\n  'red': 'crimson red',\n  'blue': 'electric blue',\n  'pink': 'hot pink',\n  'white': 'pure white',\n  'green': 'neon green',\n  'rgb': 'rainbow multicolor',\n  'rainbow': 'rainbow multicolor'\n};\n\nconst neonColor = colorMap[color.toLowerCase()] || color;\n\nconst prompt = `Professional product photography: real LED neon sign reading \"${text}\" in ${neonColor} glow, mounted on wall in ${sceneDesc}. Sign dimensions approximately ${widthCm}cm wide. Realistic neon lighting effect with soft glow and reflections. High-end commercial photography style, 8K quality.`;\n\nreturn [{ json: { prompt, text, width: widthInches, color: neonColor, scene: sceneDesc, chat_id } }];"
+      },
+      "id": "87598243-eb23-4d42-93c7-8d87472db2f1",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"model\": \"nano-banana-pro\", \"input\": { \"prompt\": $json.prompt, \"aspect_ratio\": \"16:9\", \"resolution\": \"2K\", \"output_format\": \"png\" } }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "c2aa769f-725c-4651-beb4-64d3ce24036e",
+      "name": "KIE Start Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseData = $input.item.json.data || $input.item.json;\nconst taskId = responseData.taskId || responseData.task_id;\n\nif (!taskId) {\n  throw new Error('Failed to get taskId from KIE API');\n}\n\nconst prevData = $('Build Prompt').item.json;\n\nreturn {\n  json: {\n    task_id: taskId,\n    text: prevData.text,\n    color: prevData.color,\n    width: prevData.width,\n    chat_id: prevData.chat_id,\n    attempts: 0\n  }\n};"
+      },
+      "id": "4b1fb1c0-cb8d-4680-9b98-b0f085a068a7",
+      "name": "Save Task Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        304
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8b34ea91-d793-4c1d-8bd6-8bee38266436",
+      "name": "Wait 5s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1088,
+        304
+      ],
+      "webhookId": "20504046-53d3-4810-80e2-2714f71a5c62"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.task_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a3b456f3-ba15-4fef-b064-8211f4fab2be",
+      "name": "Check Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.state }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "success"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "b68f4593-2c4f-4048-84ed-ad447d5a52ae",
+      "name": "Is Completed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\nconst savedData = $('Save Task Data').item.json;\n\nif (result.code !== 200 || result.data?.state === 'fail') {\n  throw new Error(`KIE Error: ${result.data?.failMsg || result.message}`);\n}\n\nlet imageUrl = null;\ntry {\n  if (result.data?.resultJson) {\n    const parsed = JSON.parse(result.data.resultJson);\n    if (parsed.resultUrls?.length > 0) imageUrl = parsed.resultUrls[0];\n  }\n} catch (e) {\n  throw new Error('Failed to parse resultJson');\n}\n\nif (!imageUrl) throw new Error('No image URL received');\n\nreturn {\n  json: {\n    image_url: imageUrl,\n    text: savedData.text,\n    color: savedData.color,\n    width: savedData.width,\n    chat_id: savedData.chat_id\n  }\n};"
+      },
+      "id": "6a54b9e9-e16d-4d93-9c59-07060dd956b7",
+      "name": "Format Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "e9e09b85-c7eb-4bfa-b6fd-c922a393cdad",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1968,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Format Result').item.json.chat_id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=✨ Your \"{{ $('Format Result').item.json.text }}\" mockup is ready!\n\n🎨 Color: {{ $('Format Result').item.json.color }}\n📏 Size: {{ Math.round($('Format Result').item.json.width / 12) }} feet\n\n💰 Want a price quote?"
+        }
+      },
+      "id": "93722378-2140-4067-9791-cebb510c4b20",
+      "name": "Send Photo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2192,
+        208
+      ],
+      "webhookId": "45c913f7-2c38-4977-b594-ca8cf98101f5",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const savedData = $('Save Task Data').item.json;\nconst currentAttempts = $input.item.json.attempts || savedData.attempts || 0;\nconst attempts = currentAttempts + 1;\nconst maxAttempts = 24;\n\nif (attempts >= maxAttempts) {\n  throw new Error(`Generation timeout exceeded (${maxAttempts * 5} sec). Please try again later.`);\n}\n\nreturn {\n  json: {\n    task_id: savedData.task_id,\n    text: savedData.text,\n    color: savedData.color,\n    width: savedData.width,\n    chat_id: savedData.chat_id,\n    attempts: attempts\n  }\n};"
+      },
+      "id": "5b4f34b0-b8df-4659-a2e4-7ddba67e5eb9",
+      "name": "Retry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "⏳ Got it! Creating your mockup will take about a minute...",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "7f393186-d695-4568-9dad-85990e19c653",
+      "name": "Notify Starting",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        304
+      ],
+      "webhookId": "089d5a4a-5245-4d42-bd3d-0d04f70ddbdf",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Notify Starting",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "KIE Start Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KIE Start Generation": {
+      "main": [
+        [
+          {
+            "node": "Save Task Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Task Data": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5s": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Is Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Completed": {
+      "main": [
+        [
+          {
+            "node": "Format Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Send Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "e47e6e70-6610-4bbd-a5b6-3e0323dd9df2",
+  "meta": {
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "8BTzMw3ZjFVWH1Lq",
+  "tags": []
+}

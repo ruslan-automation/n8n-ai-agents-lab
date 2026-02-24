@@ -1,0 +1,463 @@
+{
+  "name": "Neon Demo - Tools Sub-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tool"
+            },
+            {
+              "name": "text"
+            },
+            {
+              "name": "width",
+              "type": "number"
+            },
+            {
+              "name": "color"
+            },
+            {
+              "name": "chat_id"
+            },
+            {
+              "name": "scene"
+            }
+          ]
+        }
+      },
+      "id": "trigger-node",
+      "name": "Execute Workflow Trigger",
+      "position": [
+        464,
+        464
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tool }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "calculate_price",
+                    "id": "a7ce17a3-432c-4df0-b30b-2af59f8706a2"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tool }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "generate_image",
+                    "id": "62c814b0-d8c7-4872-8445-ea0aa8cb31c6"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-node",
+      "name": "Tool Switch",
+      "position": [
+        688,
+        464
+      ],
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// КАЛЬКУЛЯТОР СТОИМОСТИ НЕОНОВОЙ ВЫВЕСКИ\n// ========================================\n\nconst text = $input.item.json.text || '';\nconst widthCm = parseInt($input.item.json.width) || 50;\nconst color = ($input.item.json.color || 'красный').toLowerCase();\n\n// Базовая стоимость: 120 руб/см ширины\nconst basePrice = widthCm * 120;\n\n// Сложность по длине текста: 50 руб/символ\nconst complexityPrice = text.length * 50;\n\n// Цветовой коэффициент\nconst colorMultipliers = {\n  'красный': 1.0,\n  'red': 1.0,\n  'синий': 1.0,\n  'blue': 1.0,\n  'зеленый': 1.0,\n  'green': 1.0,\n  'розовый': 1.1,\n  'pink': 1.1,\n  'белый': 1.15,\n  'white': 1.15,\n  'теплый белый': 1.2,\n  'warm white': 1.2,\n  'rgb': 1.3,\n  'радужный': 1.3\n};\n\nconst colorMultiplier = colorMultipliers[color] || 1.0;\n\n// Итоговая стоимость\nconst totalPrice = (basePrice + complexityPrice) * colorMultiplier;\n\n// Вилка ±10%\nconst minPrice = Math.round(totalPrice * 0.9 / 100) * 100;\nconst maxPrice = Math.round(totalPrice * 1.1 / 100) * 100;\n\n// Формируем красивый ответ\nconst colorName = color.charAt(0).toUpperCase() + color.slice(1);\n\nreturn {\n  json: {\n    price_min: minPrice,\n    price_max: maxPrice,\n    price_range: `${minPrice.toLocaleString('ru-RU')} - ${maxPrice.toLocaleString('ru-RU')} руб.`,\n    parameters: {\n      text: text,\n      width: widthCm,\n      color: colorName\n    },\n    details: `Текст: \"${text}\", Ширина: ${widthCm}см, Цвет: ${colorName}`,\n    formula: `База (${widthCm}см × 120₽) + Сложность (${text.length} симв. × 50₽) × Коэф. цвета (${colorMultiplier})`\n  }\n};"
+      },
+      "id": "calc-node",
+      "name": "Calculate Price",
+      "position": [
+        928,
+        352
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем параметры\nconst text = $input.first().json.text || 'NEON';\nconst width = $input.first().json.width || 100;\nconst color = $input.first().json.color || 'pink';\nconst scene = $input.first().json.scene || 'bar';\n\n// Маппинг сцены на английский\nconst sceneMap = {\n  'бар': 'stylish bar interior with dark walls and ambient lighting',\n  'кафе': 'cozy cafe interior with warm atmosphere',\n  'улица': 'night city street with brick wall building exterior',\n  'витрина': 'modern storefront window display',\n  'помещение': 'modern interior room with neutral walls',\n  'баннер': 'outdoor advertising banner on city building',\n  'ресторан': 'upscale restaurant interior with elegant decor',\n  'магазин': 'retail store interior with product displays',\n  'офис': 'modern office reception area'\n};\n\n// Определяем сцену\nlet sceneDesc = sceneMap['бар']; // по умолчанию\nfor (const [key, value] of Object.entries(sceneMap)) {\n  if (scene.toLowerCase().includes(key)) {\n    sceneDesc = value;\n    break;\n  }\n}\n\n// Если не нашли в маппинге, используем как есть\nif (!Object.keys(sceneMap).some(k => scene.toLowerCase().includes(k))) {\n  sceneDesc = scene + ' setting';\n}\n\n// Маппинг цветов\nconst colorMap = {\n  'красный': 'crimson red',\n  'синий': 'electric blue',\n  'розовый': 'hot pink',\n  'белый': 'pure white',\n  'зеленый': 'neon green',\n  'rgb': 'rainbow multicolor'\n};\n\nconst neonColor = colorMap[color.toLowerCase()] || color;\n\nconst prompt = `Professional product photography: real LED neon sign reading \"${text}\" in ${neonColor} glow, mounted on wall in ${sceneDesc}. Sign dimensions approximately ${width}cm wide. Realistic neon lighting effect with soft glow and reflections. High-end commercial photography style, 8K quality.`;\n\nreturn [{ json: { prompt, text, width, color: neonColor, scene: sceneDesc } }];"
+      },
+      "id": "prompt-node",
+      "name": "Build Nano Banana Prompt",
+      "position": [
+        928,
+        560
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"model\": \"nano-banana-pro\",\n  \"input\": {\n    \"prompt\": $json.prompt,\n    \"aspect_ratio\": \"16:9\",\n    \"resolution\": \"2K\",\n    \"output_format\": \"png\"\n  }\n}) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "kie-request-node",
+      "name": "KIE AI: Start Generation",
+      "position": [
+        1152,
+        560
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Сохраняем данные для следующих шагов\n// KIE возвращает taskId в объекте data\nconst responseData = $input.item.json.data || $input.item.json;\nconst taskId = responseData.taskId || responseData.task_id;\n\nif (!taskId) {\n  throw new Error('Не получен taskId от KIE API. Ответ сервера: ' + JSON.stringify($input.item.json));\n}\n\n// Получаем text и color из предыдущего node\nconst prevData = $('Build Nano Banana Prompt').item.json;\n\nreturn {\n  json: {\n    task_id: taskId, // Сохраняем в нашем формате task_id для удобства\n    text: prevData.text,\n    color: prevData.color,\n    width: prevData.width,\n    attempts: 0\n  }\n};"
+      },
+      "id": "save-request-node",
+      "name": "Save Task Data",
+      "position": [
+        1360,
+        560
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {},
+      "id": "wait-node",
+      "name": "Wait 5s",
+      "position": [
+        1584,
+        560
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "neon-wait-webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.task_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-status-node",
+      "name": "Check Task Status",
+      "position": [
+        1808,
+        560
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.state }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "success"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "if-completed-node",
+      "name": "Is Completed?",
+      "position": [
+        2032,
+        560
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// ФИНАЛЬНЫЙ РЕЗУЛЬТАТ (KIE AI)\n// ========================================\n\nconst result = $input.item.json;\nconst savedData = $('Save Task Data').item.json;\n\n// 1. Проверяем ошибки API\nif (result.code !== 200 || result.data?.state === 'fail') {\n  throw new Error(`Ошибка генерации KIE: ${result.data?.failMsg || result.message}`);\n}\n\n// 2. Достаем URL картинки\n// KIE возвращает resultJson как СТРОКУ, которую нужно распарсить\nlet imageUrl = null;\n\ntry {\n  if (result.data?.resultJson) {\n    const parsedResult = JSON.parse(result.data.resultJson);\n    if (parsedResult.resultUrls && parsedResult.resultUrls.length > 0) {\n      imageUrl = parsedResult.resultUrls[0];\n    }\n  }\n} catch (e) {\n  throw new Error('Не удалось распарсить resultJson от KIE: ' + e.message);\n}\n\nif (!imageUrl) {\n  throw new Error('Не удалось найти URL изображения в ответе: ' + JSON.stringify(result));\n}\n\nreturn {\n  json: {\n    success: true,\n    image_url: imageUrl,\n    text: savedData.text,\n    color: savedData.color,\n    width: savedData.width,\n    message: `✨ Макет готов! Текст: \"${savedData.text}\", Цвет: ${savedData.color}, Ширина: ${savedData.width}см`\n  }\n};"
+      },
+      "id": "format-result-node",
+      "name": "Format Result",
+      "position": [
+        2224,
+        416
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Увеличиваем счетчик попыток\nconst savedData = $('Save Task Data').item.json;\nconst attempts = (savedData.attempts || 0) + 1;\nconst maxAttempts = 24; // 24 * 5 сек = 120 сек максимум (2K генерация может быть дольше)\n\nif (attempts >= maxAttempts) {\n  throw new Error('Превышено время ожидания генерации (120 сек)');\n}\n\n// Возвращаем данные для повторной проверки\nreturn {\n  json: {\n    task_id: savedData.task_id,\n    text: savedData.text,\n    color: savedData.color,\n    width: savedData.width,\n    attempts: attempts\n  }\n};"
+      },
+      "id": "retry-node",
+      "name": "Prepare Retry",
+      "position": [
+        2240,
+        672
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Execute Workflow Trigger').item.json.chat_id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=✨ Ваш макет неоновой вывески \"{{ $('Format Result').item.json.text }}\" готов!\n\n🎨 Цвет: {{ $('Format Result').item.json.color }}\n📏 Ширина: {{ $('Format Result').item.json.width }} см"
+        }
+      },
+      "id": "telegram-send-photo",
+      "name": "Send Photo to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        560
+      ],
+      "webhookId": "YOUR_WEBHOOK_ID_3",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-image",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1520,
+        560
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Build Nano Banana Prompt": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "KIE AI: Start Generation",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Check Task Status": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Is Completed?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Tool Switch",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Completed?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Format Result",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Prepare Retry",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "KIE AI: Start Generation": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Save Task Data",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Prepare Retry": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait 5s",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Save Task Data": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait 5s",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Tool Switch": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Calculate Price",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Build Nano Banana Prompt",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait 5s": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Check Task Status",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Send Photo to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "pywMqKI4o5sXSZcGZjwcx",
+  "tags": []
+}

@@ -1,0 +1,1030 @@
+{
+  "name": "Почта с кнопкой",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "email-agent",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "6ff3919c-c514-45c2-b72d-33391a8348c0",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -1952,
+        208
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "070279d4-9293-467d-ae8b-40a6ed3bebd2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse recipients: supports \"Игорю\", \"igor@mail.ru\", \"@igor\"\n// Works with both Execute Workflow Trigger and Webhook\nconst input = $input.item.json.body || $input.item.json;\nconst recipient = input.recipient || input.to || '';\nconst command = input.command || input.message || '';\n\n// Determine recipient type\nlet recipientType = 'unknown';\nlet recipientValue = recipient.trim();\nlet needsLookup = false;\n\nif (recipientValue.includes('@') && recipientValue.includes('.')) {\n  // Direct email: igor@mail.ru\n  recipientType = 'email';\n  needsLookup = false;\n} else if (recipientValue.startsWith('@')) {\n  // Telegram/username: @igor\n  recipientType = 'username';\n  recipientValue = recipientValue.slice(1);\n  needsLookup = true;\n} else if (recipientValue.length > 0) {\n  // Name: \"Игорю\", \"Igor\"\n  recipientType = 'name';\n  // Remove common Russian dative endings\n  recipientValue = recipientValue.replace(/(у|ю|е)$/i, '');\n  needsLookup = true;\n}\n\nreturn {\n  json: {\n    originalRecipient: recipient,\n    recipientType,\n    recipientValue,\n    needsLookup,\n    command,\n    action: input.action || 'draft',\n    subject: input.subject || '',\n    body: input.body || '',\n    attachments: input.attachments || [],\n    chatId: input.chatId || input.chat_id || '',\n    userId: input.userId || input.user_id || ''\n  }\n};"
+      },
+      "id": "7edb84ef-8807-4539-b824-8a612617b595",
+      "name": "Parse Recipients",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1728,
+        208
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 3,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.needsLookup }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1d944143-f37f-48d5-aa3d-dd87d87ca38f",
+      "name": "IF Need Email Lookup",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -1504,
+        208
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "contacts",
+        "limit": 5,
+        "filterType": "string",
+        "filterString": "=name.ilike.%{{ $json.recipientValue }}%,username.ilike.%{{ $json.recipientValue }}%,telegram.ilike.%{{ $json.recipientValue }}%"
+      },
+      "id": "ead393f3-e9a5-4a2f-a787-f1bbc06a24ae",
+      "name": "Supabase Search Contact",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        -1296,
+        112
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const contacts = $input.all();\nconst originalData = $('Parse Recipients').item.json;\n\nif (contacts.length === 0) {\n  return {\n    json: {\n      ...originalData,\n      email: null,\n      contactFound: false,\n      error: `Контакт \"${originalData.recipientValue}\" не найден в базе данных`\n    }\n  };\n}\n\nconst contact = contacts[0].json;\nreturn {\n  json: {\n    ...originalData,\n    email: contact.email,\n    contactName: contact.name || contact.username,\n    contactFound: true\n  }\n};"
+      },
+      "id": "cd953ac1-be3e-4e3a-97d7-7e06e80a1a56",
+      "name": "Process Contact Result",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1136,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nreturn {\n  json: {\n    ...data,\n    email: data.recipientValue,\n    contactFound: true,\n    contactName: data.recipientValue\n  }\n};"
+      },
+      "id": "55c8920b-fd37-4b61-8c01-3f776bb43ca8",
+      "name": "Use Direct Email",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1296,
+        304
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.contactFound }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f9725d0e-8157-4839-bf37-912497ec0d32",
+      "name": "IF Contact Found",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -976,
+        224
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Пользователь хочет отправить email.\n\nПолучатель: {{ $json.contactName }} <{{ $json.email }}>\nКоманда пользователя: {{ $json.command }}\nДействие: {{ $json.action }}\n\nСгенерируй профессиональное письмо и верни ТОЛЬКО JSON:\n{\n  \"action\": \"send\",\n  \"subject\": \"тема письма\",\n  \"body\": \"текст письма\",\n  \"to\": \"{{ $json.email }}\"\n}",
+        "options": {
+          "systemMessage": "Ты - email-ассистент. Генерируй профессиональные письма.\n\nПРАВИЛА:\n1. Отвечай ТОЛЬКО валидным JSON\n2. Никакого текста до или после JSON\n3. action всегда 'send' если не указано иначе\n4. body - полный текст письма с приветствием и подписью\n\nПример ответа:\n{\"action\": \"send\", \"subject\": \"Привет\", \"body\": \"Здравствуйте!\\n\\nТекст письма.\\n\\nС уважением\", \"to\": \"email@example.com\"}",
+          "maxIterations": 3
+        }
+      },
+      "id": "a9cc1323-cbc5-43e5-9813-e4b5450b3c84",
+      "name": "Email AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -720,
+        128
+      ],
+      "typeVersion": 3.1,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentOutput = $input.item.json;\nconst originalData = $('IF Contact Found').item.json;\n\n// Parse agent output\nlet emailData;\ntry {\n  // Try to extract JSON from agent response\n  const outputText = agentOutput.output || agentOutput.text || JSON.stringify(agentOutput);\n  const jsonMatch = outputText.match(/\\{[\\s\\S]*\\}/);\n  emailData = jsonMatch ? JSON.parse(jsonMatch[0]) : agentOutput;\n} catch (e) {\n  emailData = {\n    action: originalData.action || 'draft',\n    subject: agentOutput.subject || originalData.subject || 'No Subject',\n    body: agentOutput.body || agentOutput.output || '',\n    to: originalData.email\n  };\n}\n\nreturn {\n  json: {\n    action: emailData.action || originalData.action || 'draft',\n    subject: emailData.subject || originalData.subject,\n    body: emailData.body || emailData.message || '',\n    to: emailData.to || originalData.email,\n    contactName: originalData.contactName,\n    chatId: originalData.chatId,\n    userId: originalData.userId,\n    originalCommand: originalData.command\n  }\n};"
+      },
+      "id": "605a3032-a3c0-469c-9b25-03d134708c28",
+      "name": "Process Agent Output",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -336,
+        128
+      ],
+      "typeVersion": 2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "draft",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "696efa00-ca4b-4740-80f3-e1df60f455a0",
+      "name": "IF Action Draft",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -192,
+        128
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "0c171ca8-4916-416a-b992-1f626d359ac6",
+      "name": "Gmail Create Draft",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 2.2,
+      "webhookId": "82ee3a84-4e0b-4e8b-89e5-2ca5db87f255",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "62281670-a9c2-470d-8e7e-50bc028bf214",
+      "name": "Gmail Send Direct",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        0,
+        240
+      ],
+      "typeVersion": 2.2,
+      "webhookId": "c1b2e537-c570-47f4-b033-745d18df0883",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const draft = $input.item.json;\nconst originalData = $('Process Agent Output').item.json;\n\nconst draftId = draft.id || draft.draftId || '';\nconst draftLink = `https://mail.google.com/mail/u/0/#drafts?compose=${draftId}`;\n\nreturn {\n  json: {\n    draftId,\n    draftLink,\n    subject: originalData.subject,\n    to: originalData.to,\n    body: originalData.body,\n    chatId: originalData.chatId,\n    userId: originalData.userId,\n    action: 'draft_created'\n  }\n};"
+      },
+      "id": "22541af7-bb6c-49dd-80f2-ff96eb9809d9",
+      "name": "Get Draft Link",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        160,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "tableId": "sent_messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldValue": "={{ $json.to }}"
+            },
+            {
+              "fieldValue": "={{ $json.subject }}"
+            },
+            {
+              "fieldValue": "sent"
+            },
+            {
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldValue": "={{ $('Process Agent Output').item.json.userId }}"
+            }
+          ]
+        }
+      },
+      "id": "6e381fe0-4ecf-4b6e-bb7d-c65f6df94a30",
+      "name": "Supabase Log Sent",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        144,
+        240
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: $json.error || 'Contact not found', recipient: $json.recipientValue } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "b501622f-8e3b-4b85-99f4-c8ddee884293",
+      "name": "Response Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        -976,
+        464
+      ],
+      "typeVersion": 1.5
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "9dc98a61-7301-4ff6-bb7a-046164d8f2c9",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2160,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"ui_handled\": true,\n  \"message\": \"Draft created and widget sent to user.\"\n}",
+        "options": {}
+      },
+      "id": "5a7a3a14-5290-4483-8a4d-7c4c88a608cd",
+      "name": "Response Success1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        304,
+        240
+      ],
+      "typeVersion": 1.5
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=<b>✨ Черновик создан</b>\n\n👤 <b>Кому:</b> {{ $json.to }}\n📝 <b>Тема:</b> {{ $json.subject }}\n\n------------------\n{{ $json.body.substring(0, 500).replace(/</g, '&lt;').replace(/>/g, '&gt;') }}...\n------------------\n\n🔗 <a href=\"{{ $json.draftLink }}\">Открыть черновик в браузере</a>",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🚀 Отправить",
+                    "additionalFields": {
+                      "callback_data": "=email_send_{{ $json.draftId }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✏️ Редактировать",
+                    "additionalFields": {
+                      "callback_data": "=email_edit_{{ $json.draftId }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Удалить",
+                    "additionalFields": {
+                      "callback_data": "=email_cancel_{{ $json.draftId }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "ff0bf634-822f-4f6e-b58c-bd42aa71f0b7",
+      "name": "Telegram Preview1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        0
+      ],
+      "webhookId": "127ae381-e48b-4c28-a2df-372d5fd293e6",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "RAG юрист"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "email-callback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "74ef9cf4-b40c-44a0-acc5-77b84cbb0f2b",
+      "name": "Telegram Callback Handler",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -2096,
+        992
+      ],
+      "webhookId": "telegram-email-callback",
+      "typeVersion": 2.1,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const callback = $input.item.json.body?.callback_query || $input.item.json.callback_query || {};\nconst data = callback.data || '';\nconst chatId = callback.message?.chat?.id || '';\nconst messageId = callback.message?.message_id || '';\nconst queryId = callback.id || '';\n\n// Parse callback data: email_send_DRAFT_ID, email_edit_DRAFT_ID, email_cancel_DRAFT_ID\nconst parts = data.split('_');\nconst action = parts[1] || 'unknown';\nconst draftId = parts.slice(2).join('_') || '';\n\nreturn {\n  json: {\n    action,\n    draftId,\n    chatId,\n    messageId,\n    queryId,\n    rawData: data\n  }\n};"
+      },
+      "id": "76163e84-44ad-4251-91f3-2eddec4ae04b",
+      "name": "Parse Callback",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1888,
+        992
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "send",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "edit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c3",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "cancel",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2f299535-12ba-4ca6-ba3b-310ffe46ecd5",
+      "name": "Switch Callback Action",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        -1664,
+        992
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "get",
+        "messageId": "={{ $json.draftId }}",
+        "options": {}
+      },
+      "id": "5113e326-11ac-4d6a-b42b-1a4d8ccc6cd0",
+      "name": "Gmail Get Draft",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -1440,
+        800
+      ],
+      "typeVersion": 2.2,
+      "webhookId": "3a2bf2f6-d920-465e-8dc5-db24dbfbeba8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.payload ? ($json.payload.headers ? ($json.payload.headers.find(h => h.name === 'To') ? $json.payload.headers.find(h => h.name === 'To').value : '') : '') : '' }}",
+        "subject": "={{ $json.payload ? ($json.payload.headers ? ($json.payload.headers.find(h => h.name === 'Subject') ? $json.payload.headers.find(h => h.name === 'Subject').value : '') : '') : '' }}",
+        "message": "={{ $json.snippet || '' }}",
+        "options": {}
+      },
+      "id": "8da87d42-eeb4-4440-8891-c7d521b0dd81",
+      "name": "Gmail Send Draft",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -1216,
+        800
+      ],
+      "typeVersion": 2.2,
+      "webhookId": "216f1cef-89ac-494c-9393-705799eb2684",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=✏️ Откройте черновик для редактирования:\nhttps://mail.google.com/mail/u/0/#drafts?compose={{ $json.draftId }}",
+        "additionalFields": {}
+      },
+      "id": "cbd47a6c-6172-4538-b6c9-36d0ebadf212",
+      "name": "Telegram Edit Link",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        -1440,
+        992
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "ed330529-eebd-4437-888f-18e50e84a0df",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "delete",
+        "messageId": "={{ $json.draftId }}"
+      },
+      "id": "448dcda9-d3d9-4d42-82a8-3f1f2f4d9bb5",
+      "name": "Gmail Delete Draft",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -1440,
+        1200
+      ],
+      "typeVersion": 2.2,
+      "webhookId": "69ce6ab2-87bf-4e1b-be16-b776baa11829",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Callback').item.json.chatId }}",
+        "text": "❌ Черновик удалён",
+        "additionalFields": {}
+      },
+      "id": "148532c5-09c8-4c1a-8928-f553c6d163d2",
+      "name": "Telegram Confirm Cancel",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        -1216,
+        1200
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "11b3ca42-bfbe-4193-a040-7e431d935d27",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "id": "bb4fe246-e829-4305-963c-a103f76268fa",
+      "name": "Merge All Responses",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        -1008,
+        992
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Parse Callback').item.json.queryId }}",
+        "additionalFields": {
+          "text": "Готово!"
+        }
+      },
+      "id": "0089851e-0e73-4f6d-b5b2-5d7c09d1b48d",
+      "name": "Answer Callback Query",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        -800,
+        976
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "c7524694-41c2-4a8c-bb3c-b3c56114a172",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "RAG юрист"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        384
+      ],
+      "id": "9f554920-d8cf-4804-a379-d3421448738b",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Recipients": {
+      "main": [
+        [
+          {
+            "node": "IF Need Email Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Need Email Lookup": {
+      "main": [
+        [
+          {
+            "node": "Supabase Search Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Use Direct Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Search Contact": {
+      "main": [
+        [
+          {
+            "node": "Process Contact Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Contact Result": {
+      "main": [
+        [
+          {
+            "node": "IF Contact Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Direct Email": {
+      "main": [
+        [
+          {
+            "node": "IF Contact Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Contact Found": {
+      "main": [
+        [
+          {
+            "node": "Email AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Response Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Process Agent Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Agent Output": {
+      "main": [
+        [
+          {
+            "node": "IF Action Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Action Draft": {
+      "main": [
+        [
+          {
+            "node": "Gmail Create Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail Send Direct",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Create Draft": {
+      "main": [
+        [
+          {
+            "node": "Get Draft Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Send Direct": {
+      "main": [
+        [
+          {
+            "node": "Supabase Log Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Draft Link": {
+      "main": [
+        [
+          {
+            "node": "Telegram Preview1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Log Sent": {
+      "main": [
+        [
+          {
+            "node": "Response Success1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Preview1": {
+      "main": [
+        [
+          {
+            "node": "Response Success1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Callback Handler": {
+      "main": [
+        [
+          {
+            "node": "Parse Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback": {
+      "main": [
+        [
+          {
+            "node": "Switch Callback Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Callback Action": {
+      "main": [
+        [
+          {
+            "node": "Gmail Get Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Edit Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail Delete Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Get Draft": {
+      "main": [
+        [
+          {
+            "node": "Gmail Send Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Send Draft": {
+      "main": [
+        [
+          {
+            "node": "Merge All Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Edit Link": {
+      "main": [
+        [
+          {
+            "node": "Merge All Responses",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Gmail Delete Draft": {
+      "main": [
+        [
+          {
+            "node": "Telegram Confirm Cancel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Responses": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "c53c1bad-31d4-45d8-a562-70ea6f7fe37a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "GJFabHbmcTVdpFv0zbIEO",
+  "tags": []
+}

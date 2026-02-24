@@ -1,0 +1,414 @@
+{
+  "name": "Neon Demo - Main Agent v2 English",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "eaf5098b-bb2e-4de9-9804-55ec2bbea7af",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1744,
+        944
+      ],
+      "webhookId": "89ab7270-b0b2-4978-8447-32abec6081f7",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=== CURRENT DATE ===\nTODAY: {{ $now.format('MM/dd/yyyy') }}\nTIME: {{ $now.format('HH:mm') }}\n==================\n\nYou are a neon sign ordering assistant for US customers.\n\nYOUR TASKS:\n1. If customer asks about PRICE — use tool calculate_price\n2. If customer wants a MOCKUP/VISUALIZATION — use tool generate_image\n\nPARAMETERS TO COLLECT:\n- text: text on the sign (REQUIRED)\n- width: size (use FEET in conversation: 1ft, 2ft, 3ft, 4ft)\n- color: neon color (red, blue, pink, white, green, RGB)\n- scene: WHERE to place the sign (bar, cafe, street, storefront, garage, bedroom, etc.)\n  IF customer doesn't specify location — use \"bar\" by default\n\nSIZE GUIDE (use these in conversation):\n- 1 foot — desktop/small shelf size\n- 2 feet — small wall sign\n- 3 feet — medium sign, like a TV\n- 4 feet — large sign, door width\n- 5 feet — extra large, person height\n\nWhen calling tools, convert feet to inches:\n- 1ft = 12 inches\n- 2ft = 24 inches\n- 3ft = 36 inches\n- 4ft = 48 inches\n- 5ft = 60 inches\n\nEXAMPLES:\n- \"PIZZA blue 4 feet\" → width: 48, scene: \"bar\"\n- \"OPEN sign 2ft for my shop\" → width: 24, scene: \"shop\"\n- \"GAME ROOM 3 foot for garage\" → width: 36, scene: \"garage\"\n\nIMPORTANT:\n- Talk in FEET with customers (not inches!)\n- Convert to inches only when calling tools\n- If customer doesn't provide parameters — politely ask for them\n\nSTYLE:\n- Speak in English\n- Be brief and professional\n- After receiving tool result — format the response nicely\n- After receiving an image, ask \"Would you like a price quote?\""
+        }
+      },
+      "id": "d7e3382d-4659-4318-8bc0-3bd565e8ecfe",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        -1376,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              },
+              "rightValue": "mockup",
+              "id": "condition-1770019568063-oekxhew6k"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": false,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "003f4cba-5661-482f-8a88-9704183b65fe",
+      "name": "Skip if Image",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "f54b4aa7-e25d-4f8b-a1cc-dc492f8d8386",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -912,
+        848
+      ],
+      "webhookId": "84e11aeb-b4d2-4381-8fff-b48562bb4844",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.5-flash",
+        "options": {}
+      },
+      "id": "c7b8ef1c-62e4-41d5-9b19-c0849f44ed12",
+      "name": "OpenRouter LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        1168
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 20
+      },
+      "id": "9dc26bb3-a9d7-48f9-b080-e7e5bbaff31c",
+      "name": "Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1360,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "name": "calculate_price",
+        "description": "Calculates the cost of a neon sign.\n\nParameters:\n- text: sign text\n- width: width in INCHES\n- color: neon color",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "4HMrTYaN0JWh791F",
+          "cachedResultName": "Neon Demo - Calculator English"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ $fromAI('text', '', 'string') }}",
+            "width": "={{ $fromAI('width', 20, 'number') }}",
+            "color": "={{ $fromAI('color', 'red', 'string') }}"
+          },
+          "schema": [
+            {
+              "id": "text",
+              "type": "string",
+              "displayName": "text"
+            },
+            {
+              "id": "width",
+              "type": "number",
+              "displayName": "width"
+            },
+            {
+              "id": "color",
+              "type": "string",
+              "displayName": "color"
+            }
+          ],
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "b56877fe-e860-4158-b249-2fe6ae46fcb7",
+      "name": "Tool Calculator",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "name": "generate_image",
+        "description": "Generates a neon sign visualization.\n\nParameters:\n- text: sign text\n- width: width in INCHES\n- color: neon color\n- scene: placement location (bar, street, cafe, garage, bedroom, etc.)",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "8BTzMw3ZjFVWH1Lq",
+          "cachedResultName": "Neon Demo - Visualizer English"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ $fromAI('text', '', 'string') }}",
+            "width": "={{ $fromAI('width', 20, 'number') }}",
+            "color": "={{ $fromAI('color', 'pink', 'string') }}",
+            "scene": "={{ $fromAI('scene', 'bar', 'string') }}",
+            "chat_id": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+          },
+          "schema": [
+            {
+              "id": "text",
+              "type": "string",
+              "displayName": "text"
+            },
+            {
+              "id": "width",
+              "type": "number",
+              "displayName": "width"
+            },
+            {
+              "id": "color",
+              "type": "string",
+              "displayName": "color"
+            },
+            {
+              "id": "scene",
+              "type": "string",
+              "displayName": "scene"
+            },
+            {
+              "id": "chat_id",
+              "type": "string",
+              "displayName": "chat_id"
+            }
+          ],
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "f08227a4-889a-4d14-bcca-9ca1955c62cc",
+      "name": "Tool Visualizer",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": false,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/start",
+              "id": "condition-1770020763161-efisx2gzd"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f2964113-7728-4367-8bbd-0602bf14b2c0",
+      "name": "Is Start Command",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1520,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "✨ *Welcome to NeonSign Bot!* ✨\n\nWe create stunning custom neon signs! 🌟\n\nWhat I can do:\n🎨 *Free mockup* — see your sign in minutes!\n💰 *Instant quote* — get pricing right away\n\n📏 *Sizes available:*\n• 1 foot — small/desktop\n• 2 feet — wall sign\n• 3 feet — medium (TV size)\n• 4 feet — large (door width)\n\nJust tell me what you want! 🚀\n\n_Example: \"PIZZA sign, pink, 3 feet\"_",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "746d1256-add7-462f-8721-9d9943b3e0a7",
+      "name": "Send Welcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1376,
+        800
+      ],
+      "webhookId": "39830e60-cfd4-45af-aa11-b4383bc6df6f",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Skip if Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip if Image": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool Visualizer": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Start Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Start Command": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "12de393f-1b8a-4020-ae6b-f301b2f893b5",
+  "meta": {
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "074vPcUvPcbtTPM4",
+  "tags": []
+}

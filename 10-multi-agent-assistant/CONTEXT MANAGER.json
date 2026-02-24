@@ -1,0 +1,385 @@
+{
+  "name": "CONTEXT MANAGER",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "94c0bee0-c17a-4c98-b79a-6e0e8e7c69ab",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -656,
+        96
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "assistant_history",
+        "limit": 100,
+        "filterType": "string",
+        "filterString": "created_at.gte.{{ new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }}"
+      },
+      "id": "42328104-52d9-4dd9-9b32-d1fd3af663d6",
+      "name": "Get Active Users",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        -448,
+        96
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "27ba17a4-2093-4750-ac11-7c9ee4aca24e",
+      "name": "Loop Users",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        -224,
+        96
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst userData = items[0]?.json || {};\n\n// Анализ паттернов\nconst chatId = userData.chat_id || userData.user_id || 'unknown';\nconst intent = userData.intent || 'general';\nconst hour = new Date(userData.created_at).getHours();\n\n// Статистика\nconst patterns = {\n  chatId: chatId,\n  frequentIntents: [intent],\n  activeHours: [hour],\n  lastActivity: userData.created_at,\n  preferences: {\n    preferredHour: hour,\n    topIntent: intent\n  }\n};\n\nreturn { json: patterns };"
+      },
+      "id": "2f73639f-9a91-49f1-b7da-f7b608d40f28",
+      "name": "Analyze Patterns",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "upsert"
+      },
+      "id": "36d17f1a-fc13-44a0-b35c-3afc89e2d1ae",
+      "name": "Update Preferences",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        224,
+        0
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "assistant_history",
+        "filterType": "string",
+        "filterString": "created_at.lt.{{ new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() }}"
+      },
+      "id": "a92aa144-955c-4e22-91a5-da225cf98171",
+      "name": "Cleanup Old Data",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        0,
+        192
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\nconst insights = {\n  generated_at: now.toISOString(),\n  period: 'daily',\n  summary: 'Анализ завершён',\n  cleanedRecords: 'old records removed',\n  nextRun: new Date(now.getTime() + 15 * 60 * 1000).toISOString()\n};\n\nreturn { json: insights };"
+      },
+      "id": "72cc77bf-f991-4e3a-9133-978ed0bf4e5a",
+      "name": "Generate Insights",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        224,
+        192
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "tableId": "proactivity_insights",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "insight_type",
+              "fieldValue": "system_maintenance"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $json.summary }}. Статус: {{ $json.cleanedRecords }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Loop Users').item.json.chatId }}"
+            }
+          ]
+        }
+      },
+      "id": "0eec1a03-1fbb-4df2-8797-86379f08a4ef",
+      "name": "Save Insights",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        432,
+        192
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "context-search",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "2b8fc579-902a-40cc-b30b-8ae8207d2382",
+      "name": "Webhook Search",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -656,
+        400
+      ],
+      "webhookId": "context-search",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/embeddings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'openai/text-embedding-3-small', input: $json.body.query || $json.query }) }}",
+        "options": {}
+      },
+      "id": "cf570382-bba2-4cfe-8a16-ea5c70d024f5",
+      "name": "Create Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -448,
+        400
+      ],
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "embeddings",
+        "limit": 10
+      },
+      "id": "98f1276f-7fd0-426c-a3ee-e6d4ce2f2496",
+      "name": "Vector Search",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        -224,
+        400
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, results: $json }) }}",
+        "options": {}
+      },
+      "id": "14686f6d-6269-4f81-bcc5-73f1bbc84728",
+      "name": "Search Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        0,
+        400
+      ],
+      "typeVersion": 1.5
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Active Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Users": {
+      "main": [
+        [
+          {
+            "node": "Loop Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Users": {
+      "main": [
+        [
+          {
+            "node": "Analyze Patterns",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cleanup Old Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Patterns": {
+      "main": [
+        [
+          {
+            "node": "Update Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Preferences": {
+      "main": [
+        [
+          {
+            "node": "Loop Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Old Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Insights": {
+      "main": [
+        [
+          {
+            "node": "Save Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Search": {
+      "main": [
+        [
+          {
+            "node": "Create Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Embedding": {
+      "main": [
+        [
+          {
+            "node": "Vector Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Search": {
+      "main": [
+        [
+          {
+            "node": "Search Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "9f0284ae-0942-41d4-b638-226cb0399d24",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "b5GF7zpRqGUHdxo_RLVJf",
+  "tags": []
+}

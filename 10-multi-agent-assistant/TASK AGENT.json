@@ -1,0 +1,420 @@
+{
+  "name": "TASK AGENT",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "3d0b2a0e-74ea-4f44-9110-d433bc684fd9",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -944,
+        96
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.item.json;\nconst now = new Date();\n\nconst months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];\n\nconst formatDate = (d) => `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;\nconst formatISO = (d) => d.toISOString().split('T')[0];\n\nconst tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);\nconst nextWeek = new Date(now); nextWeek.setDate(now.getDate() + 7);\n\nconst command = input.command || '';\nlet suggestedPriority = 'medium';\nif (command.toLowerCase().includes('срочно') || command.toLowerCase().includes('важно')) {\n  suggestedPriority = 'high';\n}\n\nreturn {\n  json: {\n    command: command,\n    context: {\n      currentDate: formatDate(now),\n      today: formatISO(now),\n      tomorrow: formatISO(tomorrow),\n      nextWeek: formatISO(nextWeek),\n      suggestedPriority: suggestedPriority\n    }\n  }\n};"
+      },
+      "id": "d596b9f9-31a6-486b-b498-df89274bdefd",
+      "name": "Inject Context",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -736,
+        96
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.command }}\n\n---\n📅 КОНТЕКСТ:\n• Сегодня: {{ $json.context.currentDate }} ({{ $json.context.today }})\n• Завтра: {{ $json.context.tomorrow }}\n• Через неделю: {{ $json.context.nextWeek }}\n• Предлагаемый приоритет: {{ $json.context.suggestedPriority }}",
+        "options": {
+          "systemMessage": "Ты — AI-ассистент для управления задачами в Notion. Ты помогаешь создавать, искать и управлять задачами.\n\n## 🎯 ТВОИ ВОЗМОЖНОСТИ\n\n### ➕ Создание задач\n- \"Задача: купить молоко\"\n- \"Добавь задачу отправить отчёт до завтра, срочно\"\n- \"Напомни позвонить в банк через неделю\"\n\n### 📋 Просмотр задач\n- \"Покажи мои задачи\"\n- \"Что надо сделать сегодня?\"\n- \"Какие срочные задачи?\"\n\n### ✏️ Редактирование\n- \"Отметь задачу 'купить молоко' выполненной\"\n- \"Перенеси дедлайн на пятницу\"\n- \"Сделай задачу срочной\"\n\n## 🏠 СТРУКТУРА ЗАДАЧИ В NOTION\n- title: Название задачи\n- status: To Do / In Progress / Done\n- priority: high / medium / low\n- due_date: Дедлайн (YYYY-MM-DD)\n- category: work / personal / shopping / health\n\n## ПРАВИЛА\n1. Приоритет по умолчанию: medium\n2. 'срочно', 'важно', 'asap' → priority: high\n3. 'когда-нибудь', 'не срочно' → priority: low\n4. 'завтра' → используй дату из контекста\n5. Отвечай кратко на русском\n\n## ВАЖНО\n- ВСЕГДА используй инструменты для работы с задачами\n- При создании high priority задачи добавь в ответ: [URGENT]\n- При ошибках объясни проблему",
+          "maxIterations": 10
+        }
+      },
+      "id": "1137d5fb-d02a-432e-8330-bab7d31970bc",
+      "name": "Task Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -512,
+        96
+      ],
+      "typeVersion": 1.7,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "task-agent-session",
+        "contextWindowLength": 10
+      },
+      "id": "f7ae93f7-e736-43cf-b4fc-be746ede7e37",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        -560,
+        320
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "2e14e591-ef45-809d-a939-f01567a0c18d",
+          "mode": "list",
+          "cachedResultName": "Tasks",
+          "cachedResultUrl": "https://www.notion.so/2e14e591ef45809da939f01567a0c18d"
+        },
+        "title": "={{ $fromAI('title', 'Task title', 'string') }}",
+        "options": {}
+      },
+      "id": "8dd76d54-0080-491c-8fb7-0798cd2f9a6c",
+      "name": "Create Task",
+      "type": "n8n-nodes-base.notionTool",
+      "position": [
+        -496,
+        512
+      ],
+      "typeVersion": 2.2,
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "search",
+        "text": "={{ $fromAI('searchQuery', 'Search query for tasks', 'string') }}",
+        "limit": 10,
+        "options": {}
+      },
+      "id": "85a708ca-1e74-4bee-a98d-7d52635f054e",
+      "name": "Search Tasks",
+      "type": "n8n-nodes-base.notionTool",
+      "position": [
+        -368,
+        512
+      ],
+      "typeVersion": 2.2,
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $fromAI('pageId', 'Notion page ID of the task to update', 'string') }}"
+        },
+        "options": {}
+      },
+      "id": "c0a0cc04-5394-4ee0-af2f-0bc049b39185",
+      "name": "Update Task",
+      "type": "n8n-nodes-base.notionTool",
+      "position": [
+        -240,
+        512
+      ],
+      "typeVersion": 2.2,
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "urgent-check",
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "operation": "contains",
+                "type": "string"
+              },
+              "rightValue": "[URGENT]"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": false,
+            "typeValidation": "loose"
+          }
+        },
+        "options": {}
+      },
+      "id": "e92bb52a-abff-4166-a74f-bff7817d87da",
+      "name": "Check Priority",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -176,
+        80
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "chatId": "398212330",
+        "text": "=⚠️ *СРОЧНАЯ ЗАДАЧА*\n\n{{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "b61cc376-88a3-48da-a4c3-586cf0021351",
+      "name": "Send Urgent Alert",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "db6b47ef-ae2c-4426-af9d-03593cb0bb44",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst agentOutput = items[0]?.json || {};\nconst source = $('Inject Context').item.json.source;\n\nlet message = agentOutput.output || agentOutput.text || '';\n// Убираем маркер [URGENT] из ответа пользователю\nmessage = message.replace('[URGENT]', '').trim();\n\nreturn {\n  json: {\n    success: true,\n    message: message,\n    source: source,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "b32f2988-8c4c-4620-b9d9-bffe45d435e9",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        208,
+        96
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const error = $input.item.json;\nconst source = $('Inject Context').item.json.source;\n\nreturn {\n  json: {\n    success: false,\n    message: 'Произошла ошибка при работе с задачами. Попробуйте ещё раз.',\n    source: source,\n    canRetry: true\n  }\n};"
+      },
+      "id": "8af466aa-d3c2-4e18-8a6d-c6238ac0f4c8",
+      "name": "Format Error",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        0,
+        336
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\n\nreturn {\n  json: {\n    success: result.success,\n    message: result.message,\n    canRetry: result.canRetry || false\n  }\n};"
+      },
+      "id": "bedf0035-219f-4484-a413-d8093b607e78",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        448,
+        96
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        304
+      ],
+      "id": "192498d8-4182-47e3-9821-43ce3c404db8",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Inject Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inject Context": {
+      "main": [
+        [
+          {
+            "node": "Task Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Task Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task": {
+      "ai_tool": [
+        [
+          {
+            "node": "Task Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Tasks": {
+      "ai_tool": [
+        [
+          {
+            "node": "Task Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Task": {
+      "ai_tool": [
+        [
+          {
+            "node": "Task Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Agent": {
+      "main": [
+        [
+          {
+            "node": "Check Priority",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Priority": {
+      "main": [
+        [
+          {
+            "node": "Send Urgent Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Urgent Alert": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Task Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "96861805-2f57-4455-b258-a9fbb09bd218",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "4OrYvyybHNwtVPL7vDee1",
+  "tags": []
+}

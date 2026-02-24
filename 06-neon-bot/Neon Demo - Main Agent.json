@@ -1,0 +1,373 @@
+{
+  "name": "Neon Demo - Main Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "914768d2-ed23-4844-8a44-70a4174aba50",
+      "name": "Telegram Trigger",
+      "position": [
+        304,
+        848
+      ],
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "webhookId": "YOUR_WEBHOOK_ID_1",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=== ТЕКУЩАЯ ДАТА ===\nСЕГОДНЯ: {{ $now.format('dd.MM.yyyy') }}\nВРЕМЯ: {{ $now.format('HH:mm') }}\n==================\n\nТы — помощник по заказу неоновых вывесок.\n\nТВОИ ЗАДАЧИ:\n1. Если клиент спрашивает ЦЕНУ — используй tool calculate_price\n2. Если клиент хочет МАКЕТ/ВИЗУАЛИЗАЦИЮ — используй tool generate_image\n\nПАРАМЕТРЫ ДЛЯ СБОРА:\n- text: текст на вывеске (ОБЯЗАТЕЛЬНО)\n- width: ширина в см (30, 50, 80, 120 или точное число)\n- color: цвет неона (красный, синий, розовый, белый, зеленый, RGB)\n- scene: ГДЕ разместить вывеску (бар, кафе, улица, витрина, баннер и т.д.)\n  ЕСЛИ клиент НЕ указал место — используй \"bar\" по умолчанию\n\nПРИМЕРЫ:\n- \"PIZZA синий 120см\" → scene: \"bar\" (по умолчанию)\n- \"PIZZA на улице 100см\" → scene: \"улица\"\n- \"КОФЕ в витрине кафе\" → scene: \"витрина кафе\"\n- \"Баннер ОТКРЫТО\" → scene: \"баннер\"\n\nВАЖНО:\n- Если клиент не указал параметры — вежливо спроси их\n- scene передавай на РУССКОМ как написал клиент (улица, кафе, витрина)\n\nСТИЛЬ:\n- Говори на русском\n- Будь кратким и профессиональным\n- После получения результата от tool — красиво оформи ответ клиенту"
+        }
+      },
+      "id": "c5816c09-de12-446c-a127-12fd53a3fe5b",
+      "name": "AI Agent",
+      "position": [
+        544,
+        848
+      ],
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.5-flash",
+        "options": {}
+      },
+      "id": "3c79eb8e-03c3-43a8-bfdc-0a3a40bf5cdf",
+      "name": "Gemini 2.5 Flash",
+      "position": [
+        464,
+        1056
+      ],
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "calculate_price",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "Neon Demo - Tools Sub-workflow",
+          "cachedResultUrl": "/workflow/pywMqKI4o5sXSZcGZjwcx",
+          "mode": "list",
+          "value": "pywMqKI4o5sXSZcGZjwcx"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "tool",
+              "id": "tool",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "text",
+              "id": "text",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "width",
+              "id": "width",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "color",
+              "id": "color",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "tool": "calculate_price",
+            "text": "={{ $fromAI('text', '', 'string') }}",
+            "width": "={{ $fromAI('width', '', 'number') }}",
+            "color": "={{ $fromAI('color', '', 'string') }}"
+          }
+        }
+      },
+      "id": "5a9a92af-b601-44c2-b88a-ca6b663f0d44",
+      "name": "Tool: Calculator",
+      "position": [
+        816,
+        1104
+      ],
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "name": "generate_image",
+        "description": "Генерирует визуализацию неоновой вывески.\n\nПараметры:\n- text: текст вывески\n- width: ширина в см\n- color: цвет неона\n- scene: место размещения (бар, улица, кафе, витрина и т.д.) — если не указано, используй \"bar\"",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "Neon Demo - Tools Sub-workflow",
+          "cachedResultUrl": "/workflow/pywMqKI4o5sXSZcGZjwcx",
+          "mode": "list",
+          "value": "pywMqKI4o5sXSZcGZjwcx"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": {
+            "fields": [
+              {
+                "name": "tool",
+                "type": "string"
+              },
+              {
+                "name": "text",
+                "type": "string"
+              },
+              {
+                "name": "width",
+                "type": "number"
+              },
+              {
+                "name": "color",
+                "type": "string"
+              },
+              {
+                "name": "scene",
+                "type": "string"
+              },
+              {
+                "name": "chat_id",
+                "type": "string"
+              }
+            ]
+          },
+          "value": {
+            "tool": "generate_image",
+            "text": "={{ $fromAI('text', '', 'string') }}",
+            "width": "={{ $fromAI('width', '', 'number') }}",
+            "color": "={{ $fromAI('color', '', 'string') }}",
+            "scene": "={{ $fromAI('scene', 'bar', 'string') }}",
+            "chat_id": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+          }
+        }
+      },
+      "id": "f85cd274-2fc4-4f07-85f4-4eacf6ae7bfa",
+      "name": "Tool: Visualizer",
+      "position": [
+        960,
+        1104
+      ],
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "7a007772-cce5-4c66-801b-97996e7d2e60",
+      "name": "Send Response",
+      "position": [
+        1024,
+        848
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "YOUR_WEBHOOK_ID_2",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "operation": "notContains",
+                "type": "string"
+              },
+              "rightValue": "https://",
+              "id": "condition-1770011406485-hmlkikoal"
+            }
+          ],
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": false,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "ae3a0e35-15d2-41d9-afb1-155daae78106",
+      "name": "Skip if Image Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 20
+      },
+      "id": "memory-node",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        1104
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Skip if Image Sent",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Gemini 2.5 Flash": {
+      "ai_languageModel": [
+        [
+          {
+            "index": 0,
+            "node": "AI Agent",
+            "type": "ai_languageModel"
+          }
+        ]
+      ]
+    },
+    "Skip if Image Sent": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Response",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Send Response",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "AI Agent",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Tool: Calculator": {
+      "ai_tool": [
+        [
+          {
+            "index": 0,
+            "node": "AI Agent",
+            "type": "ai_tool"
+          }
+        ]
+      ]
+    },
+    "Tool: Visualizer": {
+      "ai_tool": [
+        [
+          {
+            "index": 0,
+            "node": "AI Agent",
+            "type": "ai_tool"
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "main": [
+        []
+      ],
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "zEa4KU2CMNgvhP0P",
+  "tags": []
+}

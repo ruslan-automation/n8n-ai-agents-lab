@@ -1,0 +1,396 @@
+{
+  "name": "Neon Demo - Visualizer",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "width",
+              "type": "number"
+            },
+            {
+              "name": "color"
+            },
+            {
+              "name": "scene"
+            },
+            {
+              "name": "chat_id"
+            }
+          ]
+        }
+      },
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text || 'NEON';\nconst width = $input.first().json.width || 100;\nconst color = $input.first().json.color || 'pink';\nconst scene = $input.first().json.scene || 'bar';\nconst chat_id = $input.first().json.chat_id;\n\nconst sceneMap = {\n  'бар': 'stylish bar interior with dark walls and ambient lighting',\n  'кафе': 'cozy cafe interior with warm atmosphere',\n  'улица': 'night city street with brick wall building exterior',\n  'витрина': 'modern storefront window display',\n  'ресторан': 'upscale restaurant interior with elegant decor',\n  'магазин': 'retail store interior with product displays',\n  'офис': 'modern office reception area'\n};\n\nlet sceneDesc = sceneMap['бар'];\nfor (const [key, value] of Object.entries(sceneMap)) {\n  if (scene.toLowerCase().includes(key)) {\n    sceneDesc = value;\n    break;\n  }\n}\n\nconst colorMap = {\n  'красный': 'crimson red',\n  'синий': 'electric blue',\n  'розовый': 'hot pink',\n  'белый': 'pure white',\n  'зеленый': 'neon green',\n  'rgb': 'rainbow multicolor'\n};\n\nconst neonColor = colorMap[color.toLowerCase()] || color;\n\nconst prompt = `Professional product photography: real LED neon sign reading \"${text}\" in ${neonColor} glow, mounted on wall in ${sceneDesc}. Sign dimensions approximately ${width}cm wide. Realistic neon lighting effect with soft glow and reflections. High-end commercial photography style, 8K quality.`;\n\nreturn [{ json: { prompt, text, width, color: neonColor, scene: sceneDesc, chat_id } }];"
+      },
+      "id": "prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"model\": \"nano-banana-pro\", \"input\": { \"prompt\": $json.prompt, \"aspect_ratio\": \"16:9\", \"resolution\": \"2K\", \"output_format\": \"png\" } }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "kie-start",
+      "name": "KIE Start Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseData = $input.item.json.data || $input.item.json;\nconst taskId = responseData.taskId || responseData.task_id;\n\nif (!taskId) {\n  throw new Error('Не получен taskId от KIE API');\n}\n\nconst prevData = $('Build Prompt').item.json;\n\nreturn {\n  json: {\n    task_id: taskId,\n    text: prevData.text,\n    color: prevData.color,\n    width: prevData.width,\n    chat_id: prevData.chat_id,\n    attempts: 0\n  }\n};"
+      },
+      "id": "save-task",
+      "name": "Save Task Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        304
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "wait",
+      "name": "Wait 5s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1088,
+        304
+      ],
+      "webhookId": "neon-viz-wait"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.task_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check",
+      "name": "Check Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Kie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.state }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "success"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        },
+        "options": {}
+      },
+      "id": "if-done",
+      "name": "Is Completed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\nconst savedData = $('Save Task Data').item.json;\n\nif (result.code !== 200 || result.data?.state === 'fail') {\n  throw new Error(`Ошибка KIE: ${result.data?.failMsg || result.message}`);\n}\n\nlet imageUrl = null;\ntry {\n  if (result.data?.resultJson) {\n    const parsed = JSON.parse(result.data.resultJson);\n    if (parsed.resultUrls?.length > 0) imageUrl = parsed.resultUrls[0];\n  }\n} catch (e) {\n  throw new Error('Не удалось распарсить resultJson');\n}\n\nif (!imageUrl) throw new Error('Нет URL изображения');\n\nreturn {\n  json: {\n    image_url: imageUrl,\n    text: savedData.text,\n    color: savedData.color,\n    width: savedData.width,\n    chat_id: savedData.chat_id\n  }\n};"
+      },
+      "id": "format",
+      "name": "Format Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1968,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Format Result').item.json.chat_id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=✨ Ваш макет неоновой вывески \"{{ $('Format Result').item.json.text }}\" готов!\n\n🎨 Цвет: {{ $('Format Result').item.json.color }}\n📏 Ширина: {{ $('Format Result').item.json.width }} см\n\n💰 Рассчитать стоимость?"
+        }
+      },
+      "id": "send",
+      "name": "Send Photo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2192,
+        208
+      ],
+      "webhookId": "bac3fa96-8cf1-4a78-b4f5-441d734a8e65",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const savedData = $('Save Task Data').item.json;\nconst currentAttempts = $input.item.json.attempts || savedData.attempts || 0;\nconst attempts = currentAttempts + 1;\nconst maxAttempts = 24;\n\nif (attempts >= maxAttempts) {\n  throw new Error(`Превышено время ожидания генерации (${maxAttempts * 5} сек). Попробуйте позже.`);\n}\n\nreturn {\n  json: {\n    task_id: savedData.task_id,\n    text: savedData.text,\n    color: savedData.color,\n    width: savedData.width,\n    chat_id: savedData.chat_id,\n    attempts: attempts\n  }\n};"
+      },
+      "id": "retry",
+      "name": "Retry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "⏳ Хорошо, создание макета займёт около минуты...",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "notify-start",
+      "name": "Notify Starting",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        304
+      ],
+      "webhookId": "5e37470e-d064-4004-a7d9-70dde13286fc",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Neon"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KIE Start Generation": {
+      "main": [
+        [
+          {
+            "node": "Save Task Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Task Data": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5s": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Is Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Completed": {
+      "main": [
+        [
+          {
+            "node": "Format Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Send Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Notify Starting",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "KIE Start Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "b2f8ad21-81ce-4ed3-bbbf-77fe5b2a02cf",
+  "meta": {
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "sc1M1Z8on7hCG438",
+  "tags": []
+}

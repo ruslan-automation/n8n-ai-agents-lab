@@ -1,0 +1,70 @@
+{
+  "name": "Neon Demo - Calculator",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "width",
+              "type": "number"
+            },
+            {
+              "name": "color"
+            }
+          ]
+        }
+      },
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.item.json.text || '';\nconst widthCm = parseInt($input.item.json.width) || 50;\nconst color = ($input.item.json.color || 'красный').toLowerCase();\n\nconst basePrice = widthCm * 120;\nconst complexityPrice = text.length * 50;\n\nconst colorMultipliers = {\n  'красный': 1.0, 'red': 1.0,\n  'синий': 1.0, 'blue': 1.0,\n  'зеленый': 1.0, 'green': 1.0,\n  'розовый': 1.1, 'pink': 1.1,\n  'белый': 1.15, 'white': 1.15,\n  'теплый белый': 1.2, 'warm white': 1.2,\n  'rgb': 1.3, 'радужный': 1.3\n};\n\nconst colorMultiplier = colorMultipliers[color] || 1.0;\nconst totalPrice = (basePrice + complexityPrice) * colorMultiplier;\nconst minPrice = Math.round(totalPrice * 0.9 / 100) * 100;\nconst maxPrice = Math.round(totalPrice * 1.1 / 100) * 100;\n\nconst colorName = color.charAt(0).toUpperCase() + color.slice(1);\n\nreturn {\n  json: {\n    price_range: `${minPrice.toLocaleString('ru-RU')} - ${maxPrice.toLocaleString('ru-RU')} руб.`,\n    details: `Текст: \"${text}\", Ширина: ${widthCm}см, Цвет: ${colorName}`,\n    price_min: minPrice,\n    price_max: maxPrice\n  }\n};"
+      },
+      "id": "calc",
+      "name": "Calculate Price",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        304
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Calculate Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "50be8c3c-b223-43ab-a0ee-2f7fe6ab97ff",
+  "meta": {
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "j3RzjQk20w6LhuDu",
+  "tags": []
+}

@@ -1,0 +1,1320 @@
+{
+  "name": "English Bot Kitchen",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "55738e6d-ce9e-4e0a-8240-2311b116d35d",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        -688,
+        320
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "e41fd8d4-1db6-4045-8216-51b85a925ad3",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "id": "1f1e9315-6ebf-4537-ab8f-9f8228f649c3",
+      "name": "Merge Trigger Data",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        -464,
+        336
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/start"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "start"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-start-quiz",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "start_quiz"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "start_quiz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "2|"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "question2"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-3",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "3|"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "question3"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-4",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "4|"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "question4"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-5",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "5|"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "finish"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-6",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "back:1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "back_to_q1"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-7",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "back:2|"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "back_to_q2"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "condition-8",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "back:3|"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "back_to_q3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "65770f1e-09e6-48a6-a904-f39649ac40df",
+      "name": "Router",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        -224,
+        320
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Router').item.json.callback_query.message.chat.id }}",
+        "text": "1️⃣ Step 1 of 4: Choose your kitchen layout",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "➖ Straight/Galley",
+                    "additionalFields": {
+                      "callback_data": "2|s:1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📐 L-Shaped",
+                    "additionalFields": {
+                      "callback_data": "2|s:2"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏝 With Island",
+                    "additionalFields": {
+                      "callback_data": "2|s:3"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "8eab7557-20ca-45a5-a209-200c306a87a6",
+      "name": "Send Question 1",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        0,
+        160
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "a3a62d1a-87e0-4a4b-9453-72657aab4c5d",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}",
+        "replyMarkup": "inlineKeyboard",
+        "text": "✅ Great choice!\n\n2️⃣ Step 2 of 4: What's your kitchen size?",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📏 Small (under 10 ft)",
+                    "additionalFields": {
+                      "callback_data": "=3|{{ $json.callback_query.data.split('|')[1] }}|z:1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏗 Medium (10-16 ft)",
+                    "additionalFields": {
+                      "callback_data": "=3|{{ $json.callback_query.data.split('|')[1] }}|z:2"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏰 Large (over 16 ft)",
+                    "additionalFields": {
+                      "callback_data": "=3|{{ $json.callback_query.data.split('|')[1] }}|z:3"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "◀️ Back",
+                    "additionalFields": {
+                      "callback_data": "back:1"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "6a81d8dd-6d90-4600-8f36-dc23436a69f2",
+      "name": "Edit Question 2",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        0,
+        320
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "1fdeef36-4758-4e73-b33b-2568e06b89fe",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}",
+        "replyMarkup": "inlineKeyboard",
+        "text": "✅ Got it!\n\n3️⃣ Step 3 of 4: What's your budget range?",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "👛 Under $5,000",
+                    "additionalFields": {
+                      "callback_data": "=4|{{ $json.callback_query.data.split('|')[1] }}|{{ $json.callback_query.data.split('|')[2] }}|b:1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💼 $5,000 - $15,000",
+                    "additionalFields": {
+                      "callback_data": "=4|{{ $json.callback_query.data.split('|')[1] }}|{{ $json.callback_query.data.split('|')[2] }}|b:2"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💎 $15,000+",
+                    "additionalFields": {
+                      "callback_data": "=4|{{ $json.callback_query.data.split('|')[1] }}|{{ $json.callback_query.data.split('|')[2] }}|b:3"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "◀️ Back",
+                    "additionalFields": {
+                      "callback_data": "={{ 'back:2|' + $json.callback_query.data.split('|')[1] }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "7692546a-61ce-454a-b7f0-15f49c3caf25",
+      "name": "Edit Question 3",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        0,
+        480
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "91f364d2-9d82-45a1-b46e-55ccd0a982af",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}",
+        "replyMarkup": "inlineKeyboard",
+        "text": "✅ Perfect!\n\n4️⃣ Step 4 of 4: When do you need installation?",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "⚡️ ASAP",
+                    "additionalFields": {
+                      "callback_data": "=5|{{ $json.callback_query.data.split('|')[1] }}|{{ $json.callback_query.data.split('|')[2] }}|{{ $json.callback_query.data.split('|')[3] }}|t:1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📅 Within a month",
+                    "additionalFields": {
+                      "callback_data": "=5|{{ $json.callback_query.data.split('|')[1] }}|{{ $json.callback_query.data.split('|')[2] }}|{{ $json.callback_query.data.split('|')[3] }}|t:2"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🛠 Currently renovating",
+                    "additionalFields": {
+                      "callback_data": "=5|{{ $json.callback_query.data.split('|')[1] }}|{{ $json.callback_query.data.split('|')[2] }}|{{ $json.callback_query.data.split('|')[3] }}|t:3"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "◀️ Back",
+                    "additionalFields": {
+                      "callback_data": "={{ 'back:3|' + $json.callback_query.data.split('|')[1] + '|' + $json.callback_query.data.split('|')[2] }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "5e68914a-c10e-4432-965d-2689ca4dc60b",
+      "name": "Edit Question 4",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        640
+      ],
+      "webhookId": "836d1a22-2c55-4aef-9fda-283ffe7b3cbe",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const routerData = $('Router').item.json;\nconst callbackData = routerData.callback_query.data;\nconst parts = callbackData.split('|');\n\nconst shapeMap = {\n  '1': '➖ Straight/Galley', \n  '2': '📐 L-Shaped', \n  '3': '🏝 With Island'\n};\nconst sizeMap = {\n  '1': '📏 Small (under 10 ft)', \n  '2': '🏗 Medium (10-16 ft)', \n  '3': '🏰 Large (over 16 ft)'\n};\nconst budgetMap = {\n  '1': '👛 Under $5,000', \n  '2': '💼 $5,000 - $15,000', \n  '3': '💎 $15,000+'\n};\nconst timelineMap = {\n  '1': '⚡️ ASAP', \n  '2': '📅 Within a month', \n  '3': '🛠 Currently renovating'\n};\n\nlet shape = '';\nlet size = '';\nlet budget = '';\nlet timeline = '';\n\nparts.forEach(part => {\n  if (part.startsWith('s:')) {\n    shape = shapeMap[part.split(':')[1]] || '';\n  } else if (part.startsWith('z:')) {\n    size = sizeMap[part.split(':')[1]] || '';\n  } else if (part.startsWith('b:')) {\n    budget = budgetMap[part.split(':')[1]] || '';\n  } else if (part.startsWith('t:')) {\n    timeline = timelineMap[part.split(':')[1]] || '';\n  }\n});\n\nconst chatId = routerData.callback_query.message.chat.id;\nconst messageId = routerData.callback_query.message.message_id;\nconst firstName = routerData.callback_query.message.chat.first_name || '';\nconst lastName = routerData.callback_query.message.chat.last_name || '';\nconst username = routerData.callback_query.message.chat.username || '';\nconst fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Not provided';\n\n// Ekaterinburg time using Intl\nconst now = new Date();\nconst options = {\n  timeZone: 'Asia/Yekaterinburg',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n  hour: '2-digit',\n  minute: '2-digit',\n  hour12: true\n};\n\nconst formatter = new Intl.DateTimeFormat('en-US', options);\nconst dateParts = formatter.formatToParts(now);\n\nlet month = '', day = '', year = '', hour = '', minute = '', dayPeriod = '';\ndateParts.forEach(part => {\n  if (part.type === 'month') month = part.value;\n  if (part.type === 'day') day = part.value;\n  if (part.type === 'year') year = part.value;\n  if (part.type === 'hour') hour = part.value;\n  if (part.type === 'minute') minute = part.value;\n  if (part.type === 'dayPeriod') dayPeriod = part.value;\n});\n\nconst dateStr = `${month}/${day}/${year}, ${hour}:${minute} ${dayPeriod}`;\n\nreturn {\n  json: {\n    date: dateStr,\n    name: fullName,\n    username: username || 'Not provided',\n    chatId: chatId.toString(),\n    shape: shape,\n    size: size,\n    budget: budget,\n    timeline: timeline,\n    messageId: messageId\n  }\n};"
+      },
+      "id": "a039c0ee-0929-4179-995f-4c9b465ef7fe",
+      "name": "Parse Callback Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        192,
+        640
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1ilbBaGS7RiHqKEr3ikRCAv6OLyTGEK8tpJ_wlf3d7Wo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ilbBaGS7RiHqKEr3ikRCAv6OLyTGEK8tpJ_wlf3d7Wo/edit?usp=drivesdk",
+          "cachedResultName": "Bot Kitchen "
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ilbBaGS7RiHqKEr3ikRCAv6OLyTGEK8tpJ_wlf3d7Wo/edit#gid=0",
+          "cachedResultName": "Лист1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Date": "={{ $json.date }}",
+            "Name": "={{ $json.name }}",
+            "Username": "={{ $json.username }}",
+            "Kitchen Shape": "={{ $json.shape }}",
+            "Size": "={{ $json.size }}",
+            "Budget": "={{ $json.budget }}",
+            "Installation Timeline": "={{ $json.timeline }}",
+            "ID чата": "="
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ID чата",
+              "displayName": "ID чата",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Kitchen Shape",
+              "displayName": "Kitchen Shape",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Size",
+              "displayName": "Size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Installation Timeline",
+              "displayName": "Installation Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6c580d8e-1a1a-405a-a517-1e16a1032d93",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        400,
+        480
+      ],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}",
+        "replyMarkup": "inlineKeyboard",
+        "text": "1️⃣ Step 1 of 4: Choose your kitchen layout",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "➖ Straight/Galley",
+                    "additionalFields": {
+                      "callback_data": "2|s:1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📐 L-Shaped",
+                    "additionalFields": {
+                      "callback_data": "2|s:2"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏝 With Island",
+                    "additionalFields": {
+                      "callback_data": "2|s:3"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "64141cbe-f141-4490-bb4b-f69bbc30bca5",
+      "name": "Back to Question 1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        160
+      ],
+      "webhookId": "05297b25-d256-40a8-96ec-68840914cafa",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}",
+        "replyMarkup": "inlineKeyboard",
+        "text": "✅ Great choice!\n\n2️⃣ Step 2 of 4: What's your kitchen size?",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📏 Small (under 10 ft)",
+                    "additionalFields": {
+                      "callback_data": "={{ '3|' + $json.callback_query.data.split('|')[1] + '|z:1' }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏗 Medium (10-16 ft)",
+                    "additionalFields": {
+                      "callback_data": "={{ '3|' + $json.callback_query.data.split('|')[1] + '|z:2' }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏰 Large (over 16 ft)",
+                    "additionalFields": {
+                      "callback_data": "={{ '3|' + $json.callback_query.data.split('|')[1] + '|z:3' }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "◀️ Back",
+                    "additionalFields": {
+                      "callback_data": "back:1"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "42865ac5-ff72-4bfb-8960-61a6a9573af9",
+      "name": "Back to Question 2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        320
+      ],
+      "webhookId": "1624d25e-0783-4212-bdbc-d48b0b6a820b",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}",
+        "replyMarkup": "inlineKeyboard",
+        "text": "✅ Got it!\n\n3️⃣ Step 3 of 4: What's your budget range?",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "👛 Under $5,000",
+                    "additionalFields": {
+                      "callback_data": "={{ '4|' + $json.callback_query.data.split('|')[1] + '|' + $json.callback_query.data.split('|')[2] + '|b:1' }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💼 $5,000 - $15,000",
+                    "additionalFields": {
+                      "callback_data": "={{ '4|' + $json.callback_query.data.split('|')[1] + '|' + $json.callback_query.data.split('|')[2] + '|b:2' }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💎 $15,000+",
+                    "additionalFields": {
+                      "callback_data": "={{ '4|' + $json.callback_query.data.split('|')[1] + '|' + $json.callback_query.data.split('|')[2] + '|b:3' }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "◀️ Back",
+                    "additionalFields": {
+                      "callback_data": "={{ 'back:2|' + $json.callback_query.data.split('|')[1] }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "efce299b-c8c2-4d0a-990e-3130658c0816",
+      "name": "Back to Question 3",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        480
+      ],
+      "webhookId": "8ca5771b-5d27-44b0-9b69-97723a937bef",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-4780490376",
+        "text": "=🚨 *New Hot Lead!*\n\n👤 Name: {{ $json.name }} (@{{ $json.username }})\nLayout: {{ $json.shape }}\nSize: {{ $json.size }}\nBudget: {{ $json.budget }}\nTimeline: {{ $json.timeline }}\n\n[Open chat](tg://user?id={{ $json.chatId }})",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c2e9a03e-5319-4642-8e3a-3a18eef0f310",
+      "name": "Admin Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        816
+      ],
+      "webhookId": "4dad0bad-8d73-48a0-91fc-87ca134b2277",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id || $('Telegram Trigger').first().json.callback_query.message.chat.id }}",
+        "file": "https://i.ibb.co/vCVXt1Zr/generated-image-5bf551ca-e70c-472c-94da-789821bcf623.png",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🚀 Start My Quote",
+                    "additionalFields": {
+                      "callback_data": "start_quiz"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "Hi there! 👋\nTake our *quick quiz* so we can understand your needs and create a custom design within your budget.\n🎁 At the end — get your *exclusive discount* and see *examples of our work*.",
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "15e11ad8-f48c-4e17-902f-de94f3cbbcaa",
+      "name": "Greeting Photo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "66b2d94d-95ec-4087-a25f-35a8f7785420",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteMessage",
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}"
+      },
+      "id": "7a0da373-e238-4aec-8081-29fa65d9a69d",
+      "name": "Delete Welcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        0
+      ],
+      "webhookId": "10d5728b-f848-4d87-a96d-f423d4a1b735",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Parse Callback Data').item.json.chatId }}",
+        "messageId": "={{ $('Parse Callback Data').item.json.messageId }}",
+        "text": "=✅ *Request Submitted!*\nOur designer is reviewing your answers to prepare kitchen options tailored to your needs.\n\n📝 *Your selections:*\n• Layout: {{ $('Parse Callback Data').item.json.shape }}\n• Size: {{ $('Parse Callback Data').item.json.size }}\n• Budget: {{ $('Parse Callback Data').item.json.budget }}\n• Timeline: {{ $('Parse Callback Data').item.json.timeline }}\n\n🎁 5% discount activated!\n*A designer will contact you within 15 minutes.*",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "aed20de6-9e4b-48a6-b3bd-19e5e22730e5",
+      "name": "Confirmation Text",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        640
+      ],
+      "webhookId": "d9d98f9d-fd36-40b5-82e9-290ddf04d181",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 4
+      },
+      "id": "f43e9504-7f17-4430-834e-44b70b1a2b93",
+      "name": "Wait 4s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        640
+      ],
+      "webhookId": "e3199852-baa3-4a90-bfad-9702cc11fcfe"
+    },
+    {
+      "parameters": {
+        "amount": 8
+      },
+      "id": "d5bd8f2f-fab8-492a-9f14-3802cfb8be70",
+      "name": "Wait 8s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        928,
+        640
+      ],
+      "webhookId": "bdc4c29b-f4af-4b5d-bc0a-a29bdea7e9bc"
+    },
+    {
+      "parameters": {
+        "operation": "sendMediaGroup",
+        "chatId": "={{ $('Parse Callback Data').item.json.chatId }}",
+        "media": {
+          "media": [
+            {
+              "media": "https://i.ibb.co/MxXtB4Kj/Kitchen-Reference-1.jpg",
+              "additionalFields": {
+                "caption": "🎨 While our designer prepares *your personalized selection*, check out some of our recent projects.\n\nWe can recreate *any design* you love!",
+                "parse_mode": "Markdown"
+              }
+            },
+            {
+              "media": "https://i.ibb.co/4ZtFTGPL/Kitchen-Reference-2.jpg",
+              "additionalFields": {}
+            },
+            {
+              "media": "https://i.ibb.co/fYV10Bs5/Kitchen-Reference-3.jpg",
+              "additionalFields": {}
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "23f3b6d9-4bac-4b59-b39a-dfa2ca0df477",
+      "name": "Photo Album",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1104,
+        640
+      ],
+      "webhookId": "bfb6a097-5c9c-4f22-a9d3-252d8c1c7190",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Кухня кнопки (YouTube)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botYOUR_BOT_TOKEN/sendVideoNote",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $('Parse Callback Data').item.json.chatId }}"
+            },
+            {
+              "name": "video_note",
+              "value": "DQACAgIAAxkBAAEDHLRpggLoNGT42tlVqfB0bRv6AAE-M3YAAqSTAALBMxBIvO6aBhuBEu04BA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bce90136-a4a0-4b3e-acc0-3d8c67aa9431",
+      "name": "Video Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        640
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Trigger Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Trigger Data": {
+      "main": [
+        [
+          {
+            "node": "Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router": {
+      "main": [
+        [
+          {
+            "node": "Greeting Photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Question 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Question 3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Question 4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Callback Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Back to Question 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Back to Question 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Back to Question 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback Data": {
+      "main": [
+        [
+          {
+            "node": "Admin Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Confirmation Text",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Welcome": {
+      "main": [
+        [
+          {
+            "node": "Send Question 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmation Text": {
+      "main": [
+        [
+          {
+            "node": "Wait 4s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4s": {
+      "main": [
+        [
+          {
+            "node": "Video Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 8s": {
+      "main": [
+        [
+          {
+            "node": "Photo Album",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Note": {
+      "main": [
+        [
+          {
+            "node": "Wait 8s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "2e5da2fe-5bd1-4711-a770-40bdf6cff265",
+  "meta": {
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "kO963EVD0FNBws58rEm45",
+  "tags": []
+}

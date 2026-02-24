@@ -1,0 +1,1152 @@
+{
+  "name": "MAIL ROUTER",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {
+          "download": true
+        }
+      },
+      "id": "ea2deeb6-1fec-4004-9491-4b6b648cf9f3",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        224
+      ],
+      "webhookId": "9b32fbdc-9bd0-44e4-a48a-505aad00de50",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.voice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "1c04d8d3-81eb-4806-bb2e-2eda06bcbec7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voice"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "212c841a-bc7f-45e2-ab07-d1424e271389"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "f9eacd41-42b6-47bb-9c04-d068891f2427",
+      "name": "Switch: Voice or Text",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "9c60acf0-aa6e-49a4-8d28-1bb26b81ad64",
+      "name": "Telegram: Download File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "68784176-4bb7-41f7-855e-e912d9bd06b1",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            },
+            {
+              "name": "language",
+              "value": "ru"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "280ad6bf-cea2-4533-a2af-866023a0bc74",
+      "name": "Groq Whisper Transcription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        336,
+        0
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "RAG юрист (cohere)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst triggerData = $('Telegram Trigger').first().json;\nlet userMessage = '';\n\n// Check if we have whisper output (voice path)\nconst whisperItem = items.find(item => item.json?.text);\nif (whisperItem) {\n  userMessage = whisperItem.json.text;\n} else {\n  // Text path\n  userMessage = triggerData.message?.text || '';\n}\n\nreturn [{\n  json: {\n    user_message: userMessage,\n    chat_id: triggerData.message.chat.id,\n    user_id: triggerData.message.from.id,\n    username: triggerData.message.from.username || triggerData.message.from.first_name,\n    timestamp: new Date().toISOString(),\n    source: whisperItem ? 'voice' : 'text'\n  }\n}];"
+      },
+      "id": "e7f35a68-c925-4309-8064-16a77b70a07d",
+      "name": "Code: Merge Voice & Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "outputFieldName": "current_datetime",
+        "options": {
+          "timezone": "Asia/Yekaterinburg"
+        }
+      },
+      "id": "520e015a-25cb-44fe-974d-b04a92b6d199",
+      "name": "Get Current DateTime",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        640,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "user_preferences",
+        "limit": 10
+      },
+      "id": "43a6eaf6-28e1-4fc3-a82d-3bc5ecbb9f90",
+      "name": "Supabase: Get User Preferences",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        816,
+        160
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "assistant_history",
+        "limit": 10
+      },
+      "id": "bf42c20d-e205-4465-a752-b978fd356d1a",
+      "name": "Supabase: Get Recent History",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        816,
+        352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous nodes\nconst mergeData = $('Code: Merge Voice & Text').first().json;\nconst currentTime = $('Get Current DateTime').first().json;\n\n// Get preferences and history from merged input\nlet userPreferences = 'No preferences set';\nlet recentHistory = 'No recent history';\n\ntry {\n  const allItems = $input.all();\n  \n  // Find preferences (from first Supabase node)\n  const prefItems = allItems.filter(item => item.json.preference_type !== undefined);\n  if (prefItems.length > 0) {\n    userPreferences = prefItems.map(item => \n      item.json.preference_type + ': ' + item.json.value\n    ).join(', ');\n  }\n  \n  // Find history items (from second Supabase node)\n  const histItems = allItems.filter(item => item.json.role !== undefined && item.json.content !== undefined);\n  if (histItems.length > 0) {\n    recentHistory = histItems.slice(0, 10).map(item => \n      item.json.role + ': ' + (item.json.content || '').substring(0, 100)\n    ).join('\\n');\n  }\n} catch (e) {\n  // If error, use defaults\n}\n\nreturn [{\n  json: {\n    user_message: mergeData.user_message,\n    current_datetime: currentTime.current_datetime,\n    user_context: userPreferences,\n    recent_history: recentHistory,\n    chat_id: mergeData.chat_id,\n    user_id: mergeData.user_id,\n    username: mergeData.username\n  }\n}];"
+      },
+      "id": "79531daa-ab78-4682-a96d-346c6cd246f2",
+      "name": "Code: Format Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_message }}",
+        "options": {
+          "systemMessage": "Ты — AI-ассистент, который управляет жизнью пользователя.\n\nСегодня: {{ $json.current_datetime }}\n\n## ⚠️ КРИТИЧЕСКИ ВАЖНО\nТы ОБЯЗАН использовать TOOLS для КАЖДОГО запроса!\nНИКОГДА не отвечай текстом без вызова tool!\n\n## КОГДА ИСПОЛЬЗОВАТЬ TOOLS\n\n📅 **calendar-agent** — ВСЕГДА используй при:\n- встреча, созвон, звонок, напоминание, записать, добавить в календарь\n- любое событие со ВРЕМЕНЕМ (в 14:00, завтра, в понедельник)\n- что у меня сегодня/завтра, покажи расписание\n\n📧 **email-agent** — ВСЕГДА используй при:\n- письмо, email, написать кому-то, отправить\n\n📞 **contact-agent** — ВСЕГДА используй при:\n- контакт, телефон, номер, сохрани номер, найди контакт\n\n📝 **task-agent** — ВСЕГДА используй при:\n- задача, дело, сделать, купить (БЕЗ точного времени)\n\n## АЛГОРИТМ РАБОТЫ\n\n1. Получил запрос о календаре/встрече → ВЫЗОВИ calendar-agent\n2. Получил запрос о контакте → ВЫЗОВИ contact-agent\n3. Получил запрос о письме → ВЫЗОВИ email-agent\n4. Получил запрос о задаче → ВЫЗОВИ task-agent\n\n## ЗАПРЕЩЕНО\n❌ Отвечать без вызова tool\n❌ Задавать уточняющие вопросы если можно выполнить запрос\n❌ Говорить 'я не могу' или 'нет доступа'\n\n## ПРАВИЛА ДЛЯ КАЛЕНДАРЯ\nЕсли не указано название события — используй 'Встреча' по умолчанию\nЕсли не указана длительность — используй 1 час по умолчанию\n\n## ПРИМЕРЫ\n\nЗапрос: 'Добавь встречу на завтра в 16:00'\nДействие: ВЫЗОВИ calendar-agent с command='Добавь встречу на завтра в 16:00'\n\nЗапрос: 'Запиши контакт Иван +79001234567'\nДействие: ВЫЗОВИ contact-agent с command='Запиши контакт Иван +79001234567'",
+          "maxIterations": 15,
+          "returnIntermediateSteps": true,
+          "enableStreaming": true
+        }
+      },
+      "id": "9abe5b82-7e1b-421f-a499-fc473cbb0918",
+      "name": "AI Agent Brain",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1312,
+        240
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Code: Merge Voice & Text').first().json.user_id }}",
+        "contextWindowLength": 10
+      },
+      "id": "f5e2a357-541b-45d7-b278-3809c2db5ce7",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1168,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Create, view, update or delete calendar events",
+        "workflowId": {
+          "__rl": true,
+          "value": "5itDosFysy3RAkG7fAZIw",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/5itDosFysy3RAkG7fAZIw",
+          "cachedResultName": "Calendar Agent v2"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "78c3181f-880c-4bf4-8932-42f9da7eadc4",
+      "name": "Tool: Calendar Agent",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Send emails or create drafts via Gmail. Use when user wants to write/send email.",
+        "workflowId": {
+          "__rl": true,
+          "value": "GJFabHbmcTVdpFv0zbIEO",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/GJFabHbmcTVdpFv0zbIEO",
+          "cachedResultName": "Почта с кнопкой"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "d936f868-bd07-4d83-8ee4-ea458804dfdc",
+      "name": "Tool: Email Agent",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Add, search, update contacts. Use for ANY request about contacts, phone numbers, emails.",
+        "workflowId": {
+          "__rl": true,
+          "value": "k4ShpYIXSRlsla4cPWNMi",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/k4ShpYIXSRlsla4cPWNMi",
+          "cachedResultName": "CONTACT AGENT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "command",
+              "displayName": "command",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "ad858a23-7283-41e3-a673-4f0ee54af2a3",
+      "name": "Tool: Contact Agent",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1488,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Create tasks in Notion. Use for TODO items without specific time.",
+        "workflowId": {
+          "__rl": true,
+          "value": "4OrYvyybHNwtVPL7vDee1",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/4OrYvyybHNwtVPL7vDee1",
+          "cachedResultName": "TASK AGENT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "source": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('source', ``, 'string') }}",
+            "command": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('command', ``, 'string') }}",
+            "chatId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('chatId', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "command",
+              "displayName": "command",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "d28a14e9-6485-40d8-9fdb-e0e542c944bc",
+      "name": "Tool: Task Agent",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Save notes, ideas, thoughts. Use for information user wants to remember.",
+        "workflowId": {
+          "__rl": true,
+          "value": "4OrYvyybHNwtVPL7vDee1",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/4OrYvyybHNwtVPL7vDee1",
+          "cachedResultName": "TASK AGENT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "source": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('source', ``, 'string') }}",
+            "command": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('command', ``, 'string') }}",
+            "chatId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('chatId', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "command",
+              "displayName": "command",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "7ce5549e-a186-4d72-8d64-4509b78d76d3",
+      "name": "Tool: Note Agent",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1696,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "assistant_history",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Code: Merge Voice & Text').first().json.user_id }}"
+            },
+            {
+              "fieldId": "username",
+              "fieldValue": "={{ $('Telegram Trigger').first().json.from.username }}"
+            },
+            {
+              "fieldId": "user_message",
+              "fieldValue": "={{ $('Code: Merge Voice & Text').first().json.message }}"
+            },
+            {
+              "fieldId": "ai_response",
+              "fieldValue": "={{ $json.output }}"
+            },
+            {
+              "fieldId": "success",
+              "fieldValue": "=true"
+            },
+            {
+              "fieldId": "tools_used",
+              "fieldValue": "={{ $json.intermediateSteps.map(s => s.action.tool).join(', ') }}"
+            },
+            {
+              "fieldId": "tokens_used",
+              "fieldValue": "={{ $json.response_metadata.token_usage.total_tokens }}"
+            }
+          ]
+        }
+      },
+      "id": "86bd54f5-2624-4241-b319-66a7c5e23027",
+      "name": "Supabase: Log Success",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        96
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Code: Merge Voice & Text').first().json.chat_id }}",
+        "text": "={{ $('AI Agent Brain').first().json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "9934c1b7-5443-49ae-b6a4-39de7a1c1800",
+      "name": "Telegram: Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2208,
+        128
+      ],
+      "webhookId": "c25e4ff5-56bc-4ae9-8754-606646c518b5",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "tableId": "error_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Code: Merge Voice & Text').item.json.user_id }}"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "={{ $json.message }}"
+            },
+            {
+              "fieldId": "workflow_name",
+              "fieldValue": "Main AI Agent"
+            },
+            {
+              "fieldId": "node_name",
+              "fieldValue": "AI Agent Brain"
+            },
+            {
+              "fieldId": "stack_trace",
+              "fieldValue": "={{ JSON.stringify($json) }}"
+            },
+            {
+              "fieldId": "resolved",
+              "fieldValue": "=false"
+            }
+          ]
+        }
+      },
+      "id": "24c3d64c-7f05-41fd-8e7e-d3d264614a98",
+      "name": "Supabase: Log Error",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        336
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Code: Merge Voice & Text').first().json.chat_id }}",
+        "text": "😕 Извини, произошла техническая ошибка. Попробуй еще раз через минуту.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "fce78739-cb08-4f03-ba79-421cc50387d2",
+      "name": "Telegram: Error to User",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1872,
+        336
+      ],
+      "webhookId": "ffc80502-9fdc-4cd1-8ba9-602a11d96cd2",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "ERROR_HANDLER_WEBHOOK_URL",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "MAIN ROUTER"
+            },
+            {
+              "name": "error",
+              "value": "={{ JSON.stringify($json) }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Code: Merge Voice & Text').first().json.user_id }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5015646e-7691-4599-a158-c2478848e9bd",
+      "name": "HTTP: Call Error Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1888,
+        496
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "id": "9ac13720-86a9-4b34-80b6-398a1eae0aac",
+      "name": "Merge: Wait for Both",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        992,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        736
+      ],
+      "id": "34b59170-1c67-4ce3-be5f-0539acd1fcbd",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of items) {\n  if (item.binary.data) {\n    // Меняем имя файла и расширение на понятное для Groq\n    item.binary.data.fileName = 'audio.ogg';\n    item.binary.data.fileExtension = 'ogg';\n    item.binary.data.mimeType = 'audio/ogg';\n  }\n}\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        0
+      ],
+      "id": "f40cef15-8dab-4c45-bcab-cc059528f2b9",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "79fba1b2-a9af-4cb6-b3bd-0b11b13d77c4",
+              "leftValue": "={{ JSON.stringify($('AI Agent Brain').item.json.intermediateSteps) }}",
+              "rightValue": "Tool: Email Agent",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1888,
+        96
+      ],
+      "id": "39f76a86-712d-46a5-9722-500bd7e3a04f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Code: Merge Voice & Text\").first().json.chat_id }}",
+        "text": "⏳ Обрабатываю запрос...",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "bd59a69c-f2c1-4066-9217-f492504464a8",
+      "name": "Telegram: Send Status",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        80
+      ],
+      "webhookId": "f696bb69-fc22-4bfb-b5c9-06194ee894e3",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteMessage",
+        "chatId": "={{ $(\"Code: Merge Voice & Text\").first().json.chat_id }}",
+        "messageId": "={{ $(\"Telegram: Send Status\").first().json.result.message_id }}"
+      },
+      "id": "d655d3c3-b30b-40cf-a51e-eb8091d87212",
+      "name": "Telegram: Delete Status",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2064,
+        112
+      ],
+      "webhookId": "61f907a9-e396-4f41-a56b-986c2fd388ad",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Assistant"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Switch: Voice or Text": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Download File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Merge Voice & Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Download File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Whisper Transcription": {
+      "main": [
+        [
+          {
+            "node": "Code: Merge Voice & Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Merge Voice & Text": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Current DateTime": {
+      "main": [
+        [
+          {
+            "node": "Supabase: Get User Preferences",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Supabase: Get Recent History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Format Context": {
+      "main": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Calendar Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Email Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Contact Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Task Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Note Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Brain": {
+      "main": [
+        [
+          {
+            "node": "Supabase: Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase: Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase: Log Success": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase: Log Error": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Error to User",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP: Call Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase: Get User Preferences": {
+      "main": [
+        [
+          {
+            "node": "Merge: Wait for Both",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase: Get Recent History": {
+      "main": [
+        [
+          {
+            "node": "Merge: Wait for Both",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge: Wait for Both": {
+      "main": [
+        [
+          {
+            "node": "Code: Format Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Groq Whisper Transcription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Telegram: Delete Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch: Voice or Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Send Status": {
+      "main": [
+        [
+          {
+            "node": "Get Current DateTime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Delete Status": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "3f72ddaa-1213-4363-9f2a-2e1ee8259d05",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "CAg7cwCg9IWR2rCxwQPAu",
+  "tags": []
+}

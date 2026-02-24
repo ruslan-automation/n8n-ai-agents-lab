@@ -1,0 +1,704 @@
+{
+  "name": "AI Design Assistant (Final Fix v2)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "030a3aaa-22d8-4f3f-8207-0326b407d7b8",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2816,
+        3024
+      ],
+      "webhookId": "cb3e24b7-d861-469b-81d0-1c32607e4d26",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.message.voice }}",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "voice"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.message.text }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c40f1084-0049-4664-b5d9-7a6b860eae3e",
+      "name": "Check Message Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2656,
+        3024
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "de8dfec9-1b3b-49aa-92e3-97392197d000",
+      "name": "Download Voice",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2384,
+        2864
+      ],
+      "webhookId": "bb8c78a0-b6e2-468c-bd89-53224d088e4d",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of items) {\n  if (item.binary.data) {\n    item.binary.data.fileName = 'audio.ogg';\n    item.binary.data.fileExtension = 'ogg';\n    item.binary.data.mimeType = 'audio/ogg';\n  }\n}\nreturn items;"
+      },
+      "id": "a032f7e1-edd5-44e8-8352-ac09b40de6ff",
+      "name": "Fix Audio Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2224,
+        2864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ca2b0380-a910-49af-8f4b-642cc8416769",
+      "name": "Groq Whisper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2048,
+        2864
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "chatInput",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1582f4f1-e877-45b1-ac43-f291eeee9978",
+      "name": "Format Voice Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1888,
+        2864
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "chatInput",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7b55e0ee-3947-421e-a2cf-9415541ba127",
+      "name": "Format Text Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=== ТЕКУЩАЯ ДАТА ===\nСЕГОДНЯ: {{ $now.format('yyyy-MM-dd') }} (ГОД: {{ $now.year }})\nВРЕМЯ: {{ $now.format('HH:mm') }}\nЗАВТРА: {{ $now.plus({days: 1}).format('yyyy-MM-dd') }}\nЧасовой пояс: +05:00\n====================\n\nТы — Мира, AI-консультант мебельной студии «LUX-Space».\n\nХАРАКТЕР: тёплый, дружелюбный, профессиональный. Эмодзи умеренно ✨🛋️🤍\nВеди живой диалог, НЕ анкету! Задавай по 1-2 вопроса за раз.\n\nВАЖНО: НЕ здоровайся повторно! Клиент уже получил приветствие. Сразу переходи к делу.\n\n=== КВАЛИФИКАЦИЯ КЛИЕНТА ===\n\nКогда клиент интересуется кухней/мебелью — выясни естественно в беседе:\n\n1. 🎨 СТИЛЬ И ЦВЕТ\n   «Есть ли предпочтения по стилю? Современный, классика, лофт?\n   Какие цвета нравятся — светлые, тёмные, яркие акценты?»\n\n2. 📐 КОНФИГУРАЦИЯ\n   «Какая планировка кухни? Прямая, угловая, П-образная, с островом?»\n\n3. 🔌 ТЕХНИКА\n   «Нужна встроенная техника? Духовка, варочная панель, посудомойка?»\n\n4. ⏰ СРОКИ\n   «Когда нужна кухня — срочно, в течение месяца, или пока идёт ремонт?»\n\nКомментируй ответы, давай советы по ходу беседы.\n\n=== ОТРАБОТКА ВОЗРАЖЕНИЙ ===\n\n❌ «Задерживаете сроки» / «Читал плохие отзывы про сроки»\n✅ «Мы работаем строго по договору. В нём прописана фиксированная дата монтажа и штрафные санкции (пени) за каждый день просрочки с нашей стороны. Ваши деньги и время защищены юридически. 🛡»\n\n❌ «Качество плохое» / «Всё вздувается» / «Читал что разбухает»\n✅ «На все наши изделия действует гарантия 24 месяца по договору. Если что-то вздуется — мы меняем фасад за свой счёт. Мы используем только влагостойкий корпус и PUR-клей (он не боится воды). Приезжайте в шоурум — покажу образцы, которые стоят в воде неделями! 💧»\n\n❌ «Дорого» / «У других дешевле»\n✅ «Понимаю, цена важна. Давайте я покажу, из чего она складывается — вы увидите, что мы используем качественную фурнитуру Blum, влагостойкие материалы и даём реальную гарантию. На консультации сделаем расчёт под ваш бюджет 📊»\n\n=== ИТОГ И ПРЕДЛОЖЕНИЕ ===\n\nПосле квалификации подведи итог и предложи:\n«Отлично! Итак, вам нужна [конфигурация] кухня в [стиль] стиле, [цвета], со встроенной техникой / без техники, сроки — [когда].\n\nПриглашаю вас на бесплатную консультацию, где мы создадим детальный 3D-проект вашей будущей кухни и рассчитаем стоимость! ✨\n\nКакой день и время вам удобны?»\n\n=== ЗАПИСЬ НА КОНСУЛЬТАЦИЮ ===\n\n1️⃣ Клиент выбрал время → проверь календарь (Get Events)\n2️⃣ Если свободно → ОБЯЗАТЕЛЬНО спроси:\n   «Как вас зовут и ваш номер телефона для связи?»\n3️⃣ Получил имя и телефон → создай запись (Create Event):\n   - start: {{ $now.year }}-MM-DDTHH:mm:00+05:00\n   - end: start + 1 час\n   - summary: «Консультация - [имя] - [телефон]»\n\n4️⃣ После записи:\n«Отлично, [Имя], вы записаны! ✨\n\n📍 Ждём вас: ул. Ленина 1, ТЦ «Мебельный Дом», 2 этаж\n🕐 [дата и время]\n\nДо встречи! 🤍»\n\nВАЖНО: Без имени и телефона НЕ записывай!\n\n=== ПРИМЕРЫ ДАТ ===\nЗавтра 15:00:\nstart: {{ $now.plus({days: 1}).format('yyyy-MM-dd') }}T15:00:00+05:00\nend: {{ $now.plus({days: 1}).format('yyyy-MM-dd') }}T16:00:00+05:00\n\n=== ИНСТРУМЕНТЫ ===\n📅 Get Events - проверить занятость\n✍️ Create Event - создать запись\n📝 Update Event - перенести\n❌ Delete Event - отменить\n\nВАЖНО: Всегда используй год {{ $now.year }}!",
+          "maxIterations": 10
+        }
+      },
+      "id": "95f31a6c-4862-4ebd-ae6a-31e0dbff359f",
+      "name": "AI Design Agent (Mira)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -1728,
+        3056
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -1904,
+        3296
+      ],
+      "id": "367aa448-c806-41cb-aa36-c63dab738750",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "NEON"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}_{{ $now.format('yyyyMMdd') }}",
+        "contextWindowLength": 15
+      },
+      "id": "ea25f330-add4-4006-8458-ad47c54b13af",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1744,
+        3312
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_notification": false
+        }
+      },
+      "id": "0dccf879-9077-43b2-92e9-f28dd391b534",
+      "name": "Send Reply to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1344,
+        3056
+      ],
+      "webhookId": "1dba0dd2-6355-4388-a133-ac92505906ed",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "minimaxcreator108@gmail.com",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "start": "={{ $fromAI('start', 'Event start time ISO 8601, e.g. 2026-01-26T15:00:00+05:00') }}",
+        "end": "={{ $fromAI('end', 'Event end time ISO 8601, e.g. 2026-01-26T16:00:00+05:00') }}",
+        "additionalFields": {
+          "description": "=Данные клиента: Имя: {{ $fromAI(\"name\") }} Телефон: {{ $fromAI(\"phone\", \"Номер телефона (ТОЛЬКО ЦИФРЫ 79xxxxxxxxx)\") }}ТГ: {{ $fromAI(\"telegram_link\") }}  О чем говорили (Резюме): {{ $fromAI(\"request_summary\", \"Краткое резюме запроса клиента: какой стиль, бюджет, боли\") }}",
+          "summary": "={{ $fromAI('summary', 'Event title, e.g. Консультация - Имя') }}"
+        }
+      },
+      "id": "251d2da0-4641-4af8-9e9e-458dfb6121c4",
+      "name": "Create Event",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -1632,
+        3520
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "minimaxcreator108@gmail.com",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "limit": 10,
+        "timeMin": "={{ $fromAI('timeMin', 'Start of search period ISO 8601, e.g. 2026-01-26T00:00:00+05:00') }}",
+        "timeMax": "={{ $fromAI('timeMax', 'End of search period ISO 8601, e.g. 2026-01-26T23:59:59+05:00') }}",
+        "options": {}
+      },
+      "id": "get-events-tool",
+      "name": "Get Events",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -1504,
+        3520
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "minimaxcreator108@gmail.com",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "eventId": "={{ $fromAI('eventId', 'ID события для изменения') }}",
+        "updateFields": {
+          "end": "={{ $fromAI('newEnd', 'New end time ISO 8601') }}",
+          "start": "={{ $fromAI('newStart', 'New start time ISO 8601') }}",
+          "summary": "={{ $fromAI('newSummary', 'New event title (optional)') }}"
+        }
+      },
+      "id": "update-event-tool",
+      "name": "Update Event",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -1376,
+        3520
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "minimaxcreator108@gmail.com",
+          "cachedResultName": "minimaxcreator108@gmail.com"
+        },
+        "eventId": "={{ $fromAI('eventId', 'ID события для удаления') }}",
+        "options": {}
+      },
+      "id": "delete-event-tool",
+      "name": "Delete Event",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -1264,
+        3520
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера minimaxcreator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "start-check",
+              "leftValue": "={{ $json.message.text }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "/start"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-start-command",
+      "name": "Check /start",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2432,
+        3040
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "welcome",
+              "name": "output",
+              "type": "string",
+              "value": "Добрый день! Я Мира, ваш персональный консультант мебельной студии LUX-Space ✨\n\nМогу помочь с выбором мебели или записать на консультацию к дизайнеру.\n\nЧем могу быть полезна? 🛋️"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "welcome-message",
+      "name": "Welcome Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        3024
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "send-welcome",
+      "name": "Send Welcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2048,
+        3024
+      ],
+      "webhookId": "e00ecf19-8aaa-4158-811a-64b4b7c1c065",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Ассистент дизайнера"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Message Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Voice": {
+      "main": [
+        [
+          {
+            "node": "Fix Audio Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Audio Format": {
+      "main": [
+        [
+          {
+            "node": "Groq Whisper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Whisper": {
+      "main": [
+        [
+          {
+            "node": "Format Voice Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Voice Input": {
+      "main": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Text Input": {
+      "main": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Design Agent (Mira)": {
+      "main": [
+        [
+          {
+            "node": "Send Reply to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Events": {
+      "main": [
+        []
+      ],
+      "ai_tool": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Event": {
+      "main": [
+        []
+      ],
+      "ai_tool": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Event": {
+      "main": [
+        []
+      ],
+      "ai_tool": [
+        [
+          {
+            "node": "AI Design Agent (Mira)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /start": {
+      "main": [
+        [
+          {
+            "node": "Welcome Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Text Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Welcome Message": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Message Type": {
+      "main": [
+        [
+          {
+            "node": "Download Voice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Yekaterinburg"
+  },
+  "versionId": "dfa09a47-a19d-4765-8eb2-be1b81f8cf9e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "063c8cba689329b722d1b1e1bfe8a02783ad3f5ae1e8b014d1ebde538179b085"
+  },
+  "id": "HTJ-JvATuewf7n5rqab6f",
+  "tags": []
+}
